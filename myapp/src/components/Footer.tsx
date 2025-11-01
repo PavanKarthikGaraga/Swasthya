@@ -1,103 +1,149 @@
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
+"use client";
+
+import { motion } from "framer-motion";
 import Link from "next/link";
-import { HeartPulse, Globe, Mail, MessageSquare, Shield, Award } from "lucide-react";
+
+const footerSections = [
+  {
+    title: "Product",
+    links: [
+      { label: "Features", href: "#features" },
+      { label: "Security", href: "#security" },
+      { label: "Pricing", href: "/pricing" },
+      { label: "Updates", href: "/updates" },
+    ],
+  },
+  {
+    title: "Company",
+    links: [
+      { label: "About", href: "/about" },
+      { label: "Careers", href: "/careers" },
+      { label: "Blog", href: "/blog" },
+      { label: "Contact", href: "/contact" },
+    ],
+  },
+  {
+    title: "Resources",
+    links: [
+      { label: "Documentation", href: "/docs" },
+      { label: "API Reference", href: "/api" },
+      { label: "Support", href: "/support" },
+      { label: "Status", href: "/status" },
+    ],
+  },
+  {
+    title: "Legal",
+    links: [
+      { label: "Privacy", href: "/privacy" },
+      { label: "Terms", href: "/terms" },
+      { label: "HIPAA", href: "/hipaa" },
+      { label: "Compliance", href: "/compliance" },
+    ],
+  },
+];
+
+const socialLinks = [
+  { label: "Twitter", href: "https://twitter.com" },
+  { label: "LinkedIn", href: "https://linkedin.com" },
+  { label: "GitHub", href: "https://github.com" },
+];
 
 export function Footer() {
   return (
-    <footer className="bg-gray-900 text-gray-100 py-12 px-4">
-      <div className="container mx-auto w-[85%] max-w-7xl">
-        <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-8 mb-8">
-          {/* Brand */}
-          <div className="lg:col-span-2">
-            <Link href="/" className="flex items-center gap-2 mb-4 group">
-              <div className="bg-teal-600 p-2 rounded-xl shadow-md">
-                <HeartPulse className="h-5 w-5 text-white" />
-              </div>
-              <div className="flex flex-col">
-                <span className="font-bold text-lg text-white">
+    <footer id="footer" className="border-t border-border bg-background">
+      <div className="container mx-auto px-6 lg:px-12">
+        {/* Main Footer Content */}
+        <div className="py-20">
+          <div className="grid md:grid-cols-6 gap-12 mb-16">
+            {/* Brand Column */}
+            <div className="md:col-span-2">
+              <Link href="/" className="inline-block mb-6">
+                <motion.span
+                  whileHover={{ scale: 1.02 }}
+                  className="text-2xl font-bold tracking-tight"
+                >
                   Swasthya
-                </span>
-                <span className="text-[10px] text-gray-400">AI Health Platform</span>
-              </div>
+                </motion.span>
             </Link>
-            <p className="text-xs text-gray-300 leading-relaxed mb-4 max-w-sm">
-              Transforming healthcare with AI-powered diagnostics and personalized health insights for everyone.
+              <p className="text-muted-foreground leading-relaxed mb-6 max-w-xs">
+                Secure, intelligent healthcare management powered by blockchain and AI.
             </p>
-            <div className="flex gap-2">
-              {[
-                { icon: Globe, label: "Website" },
-                { icon: Mail, label: "Email" },
-                { icon: MessageSquare, label: "Chat" },
-              ].map((social, i) => (
-                <Button key={i} variant="outline" size="icon" className="h-8 w-8 rounded-lg bg-gray-800 border-gray-700 hover:bg-teal-600 hover:border-teal-600 transition-colors">
-                  <social.icon className="h-3.5 w-3.5" />
-                </Button>
-              ))}
+              <div className="space-y-2 text-sm text-muted-foreground">
+                <div>support@swasthya.com</div>
+                <div>+1 (555) 123-4567</div>
             </div>
           </div>
 
-          {/* Links */}
-          <div>
-            <h3 className="font-bold text-sm mb-3 text-white">Product</h3>
-            <ul className="space-y-2">
-              {["Features", "Pricing", "Security", "Integrations", "API"].map((item) => (
-                <li key={item}>
-                  <Link href="#" className="text-gray-400 hover:text-teal-400 transition-colors text-xs">
-                    {item}
+            {/* Links Columns */}
+            {footerSections.map((section, index) => (
+              <div key={index}>
+                <h3 className="font-semibold mb-4">{section.title}</h3>
+                <ul className="space-y-3">
+                  {section.links.map((link, linkIndex) => (
+                    <li key={linkIndex}>
+                      <Link
+                        href={link.href}
+                        className="text-sm text-muted-foreground hover:text-foreground transition-colors inline-block relative group"
+                      >
+                        {link.label}
+                        <span className="absolute left-0 -bottom-0.5 w-0 h-px bg-foreground group-hover:w-full transition-all duration-300" />
                   </Link>
                 </li>
               ))}
             </ul>
           </div>
-
-          <div>
-            <h3 className="font-bold text-sm mb-3 text-white">Company</h3>
-            <ul className="space-y-2">
-              {["About", "Blog", "Careers", "Press", "Partners"].map((item) => (
-                <li key={item}>
-                  <Link href="#" className="text-gray-400 hover:text-teal-400 transition-colors text-xs">
-                    {item}
-                  </Link>
-                </li>
               ))}
-            </ul>
           </div>
 
-          <div>
-            <h3 className="font-bold text-sm mb-3 text-white">Legal</h3>
-            <ul className="space-y-2">
-              {["Privacy", "Terms", "HIPAA", "Compliance", "Licenses"].map((item) => (
-                <li key={item}>
-                  <Link href="#" className="text-gray-400 hover:text-teal-400 transition-colors text-xs">
-                    {item}
-                  </Link>
-                </li>
-              ))}
-            </ul>
+          {/* Newsletter */}
+          <div className="py-12 border-t border-border">
+            <div className="max-w-xl">
+              <h3 className="text-xl font-bold mb-2">Stay updated</h3>
+              <p className="text-muted-foreground mb-6">
+                Subscribe to our newsletter for product updates and healthcare insights.
+              </p>
+              <form className="flex gap-3">
+                <input
+                  type="email"
+                  placeholder="Enter your email"
+                  className="flex-1 px-4 py-3 bg-muted border border-border rounded-sm text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+                <button
+                  type="submit"
+                  className="px-6 py-3 bg-foreground text-background hover:bg-foreground/90 rounded-sm text-sm font-medium transition-colors"
+                >
+                  Subscribe
+                </button>
+              </form>
+            </div>
           </div>
         </div>
 
-        <Separator className="mb-6" />
+        {/* Bottom Bar */}
+        <div className="py-8 border-t border-border">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+            {/* Copyright */}
+            <div className="text-sm text-muted-foreground">
+              © 2025 Swasthya. All rights reserved.
+            </div>
 
-        <div className="flex flex-col md:flex-row items-center justify-between gap-3">
-          <p className="text-xs text-gray-600">
-            © 2025 Swasthya Health Intelligence. All rights reserved.
-          </p>
-          <div className="flex items-center gap-3">
-            <Badge variant="secondary" className="bg-green-100 text-green-700 hover:bg-green-100 border-0 text-[10px]">
-              <Shield className="h-2.5 w-2.5 mr-1" />
-              HIPAA Compliant
-            </Badge>
-            <Badge variant="secondary" className="bg-blue-100 text-blue-700 hover:bg-blue-100 border-0 text-[10px]">
-              <Award className="h-2.5 w-2.5 mr-1" />
-              FDA Approved
-            </Badge>
+            {/* Social Links */}
+            <div className="flex items-center gap-8">
+              {socialLinks.map((social, index) => (
+                <a
+                  key={index}
+                  href={social.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {social.label}
+                </a>
+              ))}
+            </div>
           </div>
         </div>
       </div>
     </footer>
   );
 }
-

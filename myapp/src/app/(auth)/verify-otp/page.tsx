@@ -59,9 +59,15 @@ export default function VerifyOTPPage() {
         
         // Redirect based on type
         if (type === "signup") {
-          router.push("/welcome"); // Could be a welcome page or dashboard
+          router.push("/onboarding"); // New users need to complete onboarding
         } else if (type === "login") {
-          router.push("/dashboard");
+          // Check if user has completed onboarding
+          const hasCompletedOnboarding = localStorage.getItem("onboardingCompleted");
+          if (hasCompletedOnboarding) {
+            router.push("/dashboard");
+          } else {
+            router.push("/onboarding");
+          }
         } else if (type === "forgot-password") {
           router.push("/reset-password");
         }

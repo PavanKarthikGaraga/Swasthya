@@ -1,16 +1,22 @@
 import type { Metadata } from "next";
-import { Lexend } from "next/font/google";
+import { Poppins, Inter } from "next/font/google";
 import "./globals.css";
 
-const lexend = Lexend({
-  variable: "--font-lexend",
+const poppins = Poppins({
+  variable: "--font-poppins",
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700", "800"],
+});
+
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
   weight: ["300", "400", "500", "600", "700", "800"],
 });
 
 export const metadata: Metadata = {
-  title: "Swasthya",
-  description: "Healthcare application",
+  title: "Swasthya - Redefining Healthcare with Blockchain and AI",
+  description: "Swasthya helps you store, secure, and analyze your health records — privately, intelligently, and instantly. Powered by blockchain and AI technology.",
 };
 
 export default function RootLayout({
@@ -20,7 +26,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${lexend.variable} antialiased font-sans`}>
+      <body className={`${poppins.variable} ${inter.variable} antialiased font-[family-name:var(--font-poppins)]`}>
         {children}
       </body>
     </html>

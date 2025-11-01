@@ -2,83 +2,122 @@
 
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
-import { Sparkles, Zap, ArrowRight, Activity, Clock } from "lucide-react";
-
-const fadeInUp = {
-  initial: { opacity: 0, y: 30 },
-  animate: { opacity: 1, y: 0 },
-  transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] },
-};
-
-const staggerContainer = {
-  animate: {
-    transition: {
-      staggerChildren: 0.1,
-    },
-  },
-};
+import Link from "next/link";
 
 export function Hero() {
   return (
-    <section className="min-h-screen flex items-center justify-center pt-32 pb-16 px-4 relative bg-white">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-teal-100/50 via-transparent to-transparent"></div>
-      <div className="container mx-auto w-[85%] max-w-7xl relative z-10">
+    <section className="relative min-h-screen flex items-center bg-background pt-24 pb-12">
+      {/* Subtle Background */}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(20,184,166,0.05),transparent_60%)] dark:bg-[radial-gradient(circle_at_30%_20%,rgba(20,184,166,0.1),transparent_60%)]" />
+      <div className="absolute inset-0 bg-[linear-gradient(rgba(20,184,166,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(20,184,166,0.02)_1px,transparent_1px)] bg-[size:100px_100px]" />
+
+      <div className="container mx-auto px-6 lg:px-12 relative z-10">
+        <div className="max-w-7xl mx-auto">
+          {/* Content */}
+          <div className="max-w-5xl mx-auto text-center space-y-12">
+            {/* Badge */}
         <motion.div
-          initial="initial"
-          animate="animate"
-          variants={staggerContainer}
-          className="text-center"
-        >
-          {/* Badge */}
-         
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6 }}
+            >
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/5 border border-primary/20 rounded-full">
+                <div className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse" />
+                <span className="text-sm font-medium">Healthcare Infrastructure for Tomorrow</span>
+              </div>
+            </motion.div>
 
           {/* Main Heading */}
           <motion.h1
-            variants={fadeInUp}
-            className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 leading-tight tracking-tight text-gray-900"
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.1 }}
+              className="text-6xl md:text-7xl lg:text-8xl font-bold leading-[1.1] tracking-tight"
           >
-            AI-Powered
+              Your health data.
             <br />
-            <span className="text-teal-600">
-              Health Intelligence
-            </span>
+              <span className="text-gradient">Secure. Intelligent.</span>
           </motion.h1>
 
           {/* Subtitle */}
           <motion.p
-            variants={fadeInUp}
-            className="text-base md:text-lg text-gray-600 max-w-3xl mx-auto mb-10 leading-relaxed"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.3 }}
+              className="text-xl md:text-2xl text-muted-foreground leading-relaxed max-w-3xl mx-auto"
           >
-            Transform your healthcare experience with cutting-edge AI diagnostics,
-            <br className="hidden md:block" />
-            real-time health monitoring, and instant access to medical expertise.
+              Store, access, and analyze your medical records with blockchain security
+              and AI-powered insights. Complete control, absolute privacy.
           </motion.p>
 
           {/* CTA Buttons */}
-          <motion.div variants={fadeInUp} className="flex flex-col sm:flex-row items-center justify-center gap-3">
-            <Button className="group bg-teal-600 hover:bg-teal-700 text-white rounded-xl px-8 py-5 text-sm font-semibold shadow-lg shadow-teal-600/25 hover:shadow-xl hover:shadow-teal-600/30 transition-all duration-300">
-              <Zap className="mr-2 h-4 w-4" />
-              Start Free Trial
-              <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
-            </Button>
-            
-            <HoverCard>
-              <HoverCardTrigger asChild>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.5 }}
+              className="flex flex-col sm:flex-row items-center justify-center gap-4"
+            >
+              <Link href="/signup">
                 <Button
-                  variant="outline"
-                  className="rounded-xl px-8 py-5 text-sm font-semibold border-2 border-gray-300 hover:border-teal-600 hover:bg-teal-50 transition-all bg-white"
+                  size="lg"
+                  className="w-full sm:w-auto px-10 py-7 text-lg font-semibold bg-foreground text-background hover:bg-foreground/90 rounded-full shadow-lg hover:shadow-xl transition-all"
                 >
-                  <Activity className="mr-2 h-4 w-4" />
-                  Watch Demo
+                  Get Started Free
+            </Button>
+              </Link>
+              <Link href="#how-it-works">
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="w-full sm:w-auto px-10 py-7 text-lg font-semibold border-2 rounded-full"
+                >
+                  How It Works
                 </Button>
-              </HoverCardTrigger>
-            </HoverCard>
+              </Link>
           </motion.div>
+
+            {/* Trust Indicators */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.8, delay: 0.7 }}
+              className="flex flex-wrap items-center justify-center gap-8 text-sm text-muted-foreground"
+            >
+              <div className="flex items-center gap-2">
+                <div className="w-1 h-1 bg-primary rounded-full" />
+                <span>256-bit Encryption</span>
+              </div>
+              <div className="w-px h-4 bg-border" />
+              <div className="flex items-center gap-2">
+                <div className="w-1 h-1 bg-primary rounded-full" />
+                <span>HIPAA Compliant</span>
+              </div>
+              <div className="w-px h-4 bg-border" />
+              <div className="flex items-center gap-2">
+                <div className="w-1 h-1 bg-primary rounded-full" />
+                <span>10,000+ Active Users</span>
+              </div>
         </motion.div>
+          </div>
+        </div>
       </div>
+
+      {/* Scroll Indicator */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 1, delay: 1 }}
+        className="absolute bottom-8 left-1/2 -translate-x-1/2"
+      >
+        <motion.div
+          animate={{ y: [0, 8, 0] }}
+          transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+          className="flex flex-col items-center gap-2"
+        >
+          <div className="w-px h-16 bg-gradient-to-b from-transparent via-border to-transparent" />
+          <span className="text-xs uppercase tracking-widest text-muted-foreground/50">Scroll</span>
+        </motion.div>
+      </motion.div>
     </section>
   );
 }
-
