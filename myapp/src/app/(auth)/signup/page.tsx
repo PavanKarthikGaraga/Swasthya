@@ -136,8 +136,8 @@ export default function SignupPage() {
       title="Create your account"
       subtitle="Join Swasthya and start your health journey"
     >
-      <form onSubmit={handleSubmit} className="animate-in fade-in-50 duration-500">
-        <div className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="space-y-6">
             {/* Google Signup */}
             <GoogleButton
               onClick={handleGoogleSignup}
@@ -158,127 +158,144 @@ export default function SignupPage() {
 
             {/* Name Inputs */}
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="firstName" className="text-sm font-medium">First name</Label>
+              <div className="space-y-3">
+                <Label htmlFor="firstName" className="text-sm font-semibold">First name</Label>
                 <Input
                   id="firstName"
                   name="firstName"
                   type="text"
-                  placeholder="John"
+                  placeholder="Enter first name"
                   value={formData.firstName}
                   onChange={handleInputChange}
                   disabled={isLoading}
-                  className={`h-12 rounded-sm ${errors.firstName ? "border-destructive" : ""}`}
+                  className={`h-14 rounded-sm border-2 focus:border-primary transition-colors ${errors.firstName ? "border-destructive" : "border-border"}`}
                 />
                 {errors.firstName && (
-                  <p className="text-sm text-destructive">{errors.firstName}</p>
+                  <p className="text-sm text-destructive flex items-center gap-2">
+                    <span className="w-1 h-1 bg-destructive rounded-full" />
+                    {errors.firstName}
+                  </p>
                 )}
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="lastName" className="text-sm font-medium">Last name</Label>
+              <div className="space-y-3">
+                <Label htmlFor="lastName" className="text-sm font-semibold">Last name</Label>
                 <Input
                   id="lastName"
                   name="lastName"
                   type="text"
-                  placeholder="Doe"
+                  placeholder="Enter last name"
                   value={formData.lastName}
                   onChange={handleInputChange}
                   disabled={isLoading}
-                  className={`h-12 rounded-sm ${errors.lastName ? "border-destructive" : ""}`}
+                  className={`h-14 rounded-sm border-2 focus:border-primary transition-colors ${errors.lastName ? "border-destructive" : "border-border"}`}
                 />
                 {errors.lastName && (
-                  <p className="text-sm text-destructive">{errors.lastName}</p>
+                  <p className="text-sm text-destructive flex items-center gap-2">
+                    <span className="w-1 h-1 bg-destructive rounded-full" />
+                    {errors.lastName}
+                  </p>
                 )}
               </div>
             </div>
 
             {/* Email Input */}
-            <div className="space-y-2">
-              <Label htmlFor="email" className="text-sm font-medium">Email</Label>
+            <div className="space-y-3">
+              <Label htmlFor="email" className="text-sm font-semibold">Email address</Label>
               <Input
                 id="email"
                 name="email"
                 type="email"
-                placeholder="your@email.com"
+                placeholder="Enter your email"
                 value={formData.email}
                 onChange={handleInputChange}
                 disabled={isLoading}
-                className={`h-12 rounded-sm ${errors.email ? "border-destructive" : ""}`}
+                className={`h-14 rounded-sm border-2 focus:border-primary transition-colors ${errors.email ? "border-destructive" : "border-border"}`}
               />
               {errors.email && (
-                <p className="text-sm text-destructive">{errors.email}</p>
+                <p className="text-sm text-destructive flex items-center gap-2">
+                  <span className="w-1 h-1 bg-destructive rounded-full" />
+                  {errors.email}
+                </p>
               )}
             </div>
 
             {/* Password Input */}
-            <div className="space-y-2">
-              <Label htmlFor="password" className="text-sm font-medium">Password</Label>
+            <div className="space-y-3">
+              <Label htmlFor="password" className="text-sm font-semibold">Password</Label>
               <div className="relative">
                 <Input
                   id="password"
                   name="password"
                   type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
+                  placeholder="Create a strong password"
                   value={formData.password}
                   onChange={handleInputChange}
                   disabled={isLoading}
-                  className={`h-12 pr-12 rounded-sm ${errors.password ? "border-destructive" : ""}`}
+                  className={`h-14 pr-14 rounded-sm border-2 focus:border-primary transition-colors ${errors.password ? "border-destructive" : "border-border"}`}
                 />
                 <button
                   type="button"
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                   onClick={() => setShowPassword(!showPassword)}
                   disabled={isLoading}
                 >
-                  {showPassword ? <FaEyeSlash className="text-sm" /> : <FaEye className="text-sm" />}
+                  {showPassword ? <FaEyeSlash className="text-lg" /> : <FaEye className="text-lg" />}
                 </button>
               </div>
               {formData.password && (
-                <div className="flex items-center gap-2 text-sm">
-                  <span className={passwordStrength.color}>
-                    {passwordStrength.text}
-                  </span>
-                  {getPasswordStrength() >= 4 && (
-                    <FaCheck className="text-primary" />
-                  )}
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className={`text-sm font-medium ${passwordStrength.color}`}>
+                      {passwordStrength.text}
+                    </span>
+                    {getPasswordStrength() >= 4 && (
+                      <FaCheck className="text-primary text-sm" />
+                    )}
+                  </div>
                 </div>
               )}
               {errors.password && (
-                <p className="text-sm text-destructive">{errors.password}</p>
+                <p className="text-sm text-destructive flex items-center gap-2">
+                  <span className="w-1 h-1 bg-destructive rounded-full" />
+                  {errors.password}
+                </p>
               )}
             </div>
 
             {/* Confirm Password Input */}
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword" className="text-sm font-medium">Confirm password</Label>
+            <div className="space-y-3">
+              <Label htmlFor="confirmPassword" className="text-sm font-semibold">Confirm password</Label>
               <div className="relative">
                 <Input
                   id="confirmPassword"
                   name="confirmPassword"
                   type={showConfirmPassword ? "text" : "password"}
-                  placeholder="••••••••"
+                  placeholder="Confirm your password"
                   value={formData.confirmPassword}
                   onChange={handleInputChange}
                   disabled={isLoading}
-                  className={`h-12 pr-12 rounded-sm ${errors.confirmPassword ? "border-destructive" : ""}`}
+                  className={`h-14 pr-14 rounded-sm border-2 focus:border-primary transition-colors ${errors.confirmPassword ? "border-destructive" : "border-border"}`}
                 />
                 <button
                   type="button"
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   disabled={isLoading}
                 >
-                  {showConfirmPassword ? <FaEyeSlash className="text-sm" /> : <FaEye className="text-sm" />}
+                  {showConfirmPassword ? <FaEyeSlash className="text-lg" /> : <FaEye className="text-lg" />}
                 </button>
               </div>
               {formData.confirmPassword && formData.password === formData.confirmPassword && (
-                <div className="flex items-center gap-2 text-sm text-primary">
-                  <FaCheck />
+                <div className="flex items-center gap-2 text-sm text-primary font-medium">
+                  <FaCheck className="text-sm" />
                   <span>Passwords match</span>
                 </div>
               )}
               {errors.confirmPassword && (
-                <p className="text-sm text-destructive">{errors.confirmPassword}</p>
+                <p className="text-sm text-destructive flex items-center gap-2">
+                  <span className="w-1 h-1 bg-destructive rounded-full" />
+                  {errors.confirmPassword}
+                </p>
               )}
             </div>
 
@@ -291,7 +308,7 @@ export default function SignupPage() {
 
           <Button
             type="submit"
-            className="w-full h-12 bg-foreground text-background hover:bg-foreground/90 font-medium rounded-sm"
+            className="w-full h-14 bg-foreground text-background hover:bg-foreground/90 font-semibold rounded-sm shadow-soft hover:shadow-medium transition-all"
             disabled={isLoading}
           >
             {isLoading ? (
@@ -300,19 +317,21 @@ export default function SignupPage() {
                 Creating account...
               </>
             ) : (
-              "Create account"
+              "Create your account"
             )}
           </Button>
 
-          <p className="text-center text-sm text-muted-foreground">
-            Already have an account?{" "}
-            <Link
-              href="/login"
-              className="text-primary hover:underline font-medium"
-            >
-              Sign in
-            </Link>
-          </p>
+          <div className="text-center pt-2">
+            <p className="text-sm text-muted-foreground">
+              Already have an account?{" "}
+              <Link
+                href="/login"
+                className="text-primary hover:underline font-semibold"
+              >
+                Sign in here
+              </Link>
+            </p>
+          </div>
         </div>
       </form>
     </AuthLayout>

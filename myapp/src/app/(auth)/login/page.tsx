@@ -108,8 +108,8 @@ export default function LoginPage() {
       title="Welcome back"
       subtitle="Sign in to your Swasthya account"
     >
-      <form onSubmit={handleSubmit} className="animate-in fade-in-50 duration-500">
-        <div className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="space-y-6">
             {/* Google Login */}
             <GoogleButton
               onClick={handleGoogleLogin}
@@ -129,32 +129,35 @@ export default function LoginPage() {
             </div>
 
             {/* Email Input */}
-            <div className="space-y-2">
-              <Label htmlFor="email" className="text-sm font-medium">Email</Label>
+            <div className="space-y-3">
+              <Label htmlFor="email" className="text-sm font-semibold">Email address</Label>
               <Input
                 id="email"
                 name="email"
                 type="email"
-                placeholder="your@email.com"
+                placeholder="Enter your email"
                 value={formData.email}
                 onChange={handleInputChange}
                 disabled={isLoading}
-                className={`h-12 rounded-sm ${errors.email ? "border-destructive" : ""}`}
+                className={`h-14 rounded-sm border-2 focus:border-primary transition-colors ${errors.email ? "border-destructive" : "border-border"}`}
               />
               {errors.email && (
-                <p className="text-sm text-destructive">{errors.email}</p>
+                <p className="text-sm text-destructive flex items-center gap-2">
+                  <span className="w-1 h-1 bg-destructive rounded-full" />
+                  {errors.email}
+                </p>
               )}
             </div>
 
             {/* Password Input */}
-            <div className="space-y-2">
+            <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <Label htmlFor="password" className="text-sm font-medium">Password</Label>
+                <Label htmlFor="password" className="text-sm font-semibold">Password</Label>
                 <Link
                   href="/forgot-password"
-                  className="text-sm text-primary hover:underline"
+                  className="text-sm text-primary hover:underline font-medium"
                 >
-                  Forgot?
+                  Forgot password?
                 </Link>
               </div>
               <div className="relative">
@@ -162,23 +165,26 @@ export default function LoginPage() {
                   id="password"
                   name="password"
                   type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
+                  placeholder="Enter your password"
                   value={formData.password}
                   onChange={handleInputChange}
                   disabled={isLoading}
-                  className={`h-12 pr-12 rounded-sm ${errors.password ? "border-destructive" : ""}`}
+                  className={`h-14 pr-14 rounded-sm border-2 focus:border-primary transition-colors ${errors.password ? "border-destructive" : "border-border"}`}
                 />
                 <button
                   type="button"
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                   onClick={() => setShowPassword(!showPassword)}
                   disabled={isLoading}
                 >
-                  {showPassword ? <FaEyeSlash className="text-sm" /> : <FaEye className="text-sm" />}
+                  {showPassword ? <FaEyeSlash className="text-lg" /> : <FaEye className="text-lg" />}
                 </button>
               </div>
               {errors.password && (
-                <p className="text-sm text-destructive">{errors.password}</p>
+                <p className="text-sm text-destructive flex items-center gap-2">
+                  <span className="w-1 h-1 bg-destructive rounded-full" />
+                  {errors.password}
+                </p>
               )}
             </div>
 
@@ -191,7 +197,7 @@ export default function LoginPage() {
 
           <Button
             type="submit"
-            className="w-full h-12 bg-foreground text-background hover:bg-foreground/90 font-medium rounded-sm"
+            className="w-full h-14 bg-foreground text-background hover:bg-foreground/90 font-semibold rounded-sm shadow-soft hover:shadow-medium transition-all"
             disabled={isLoading}
           >
             {isLoading ? (
@@ -200,19 +206,21 @@ export default function LoginPage() {
                 Signing in...
               </>
             ) : (
-              "Sign in"
+              "Sign in to your account"
             )}
           </Button>
 
-          <p className="text-center text-sm text-muted-foreground">
-            Don&apos;t have an account?{" "}
-            <Link
-              href="/signup"
-              className="text-primary hover:underline font-medium"
-            >
-              Sign up
-            </Link>
-          </p>
+          <div className="text-center pt-2">
+            <p className="text-sm text-muted-foreground">
+              Don&apos;t have an account?{" "}
+              <Link
+                href="/signup"
+                className="text-primary hover:underline font-semibold"
+              >
+                Create account
+              </Link>
+            </p>
+          </div>
         </div>
       </form>
     </AuthLayout>

@@ -148,9 +148,8 @@ export default function DashboardPage() {
   };
 
   const renderReportsSection = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-bold">Medical Reports</h2>
+    <div className="space-y-8">
+      <div className="flex items-center justify-end">
         <Button className="bg-foreground text-background hover:bg-foreground/90 rounded-sm">
           <FaFileAlt className="mr-2" />
           New Report
@@ -183,8 +182,7 @@ export default function DashboardPage() {
   );
 
   const renderImageDiagnosisSection = () => (
-    <div className="space-y-6">
-      <h2 className="text-3xl font-bold">AI Image Diagnosis</h2>
+    <div className="space-y-8">
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Upload Section */}
@@ -323,9 +321,8 @@ export default function DashboardPage() {
   );
 
   const renderProfileSection = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-bold">Profile Settings</h2>
+    <div className="space-y-8">
+      <div className="flex items-center justify-end">
         {!isEditing ? (
           <Button onClick={() => setIsEditing(true)} variant="outline" className="rounded-sm">
             <FaEdit className="mr-2" />
@@ -405,87 +402,109 @@ export default function DashboardPage() {
   );
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border bg-card shadow-soft">
-        <div className="w-full px-6 lg:px-12 py-4 flex items-center justify-between">
+    <div className="min-h-screen bg-background flex">
+      {/* Subtle Background */}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(20,184,166,0.05),transparent_60%)] dark:bg-[radial-gradient(circle_at_30%_20%,rgba(20,184,166,0.1),transparent_60%)]" />
+      <div className="absolute inset-0 bg-[linear-gradient(rgba(20,184,166,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(20,184,166,0.02)_1px,transparent_1px)] bg-[size:100px_100px]" />
+
+      {/* Left Sidebar */}
+      <div className="w-80 bg-card border-r border-border shadow-medium flex flex-col relative z-10">
+        {/* Logo Section */}
+        <div className="p-8 border-b border-border">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-primary rounded-sm">
               <FaHeartbeat className="h-5 w-5 text-white m-1.5" />
             </div>
             <h1 className="text-xl font-bold tracking-tight">Swasthya</h1>
           </div>
-          
-          <div className="flex items-center gap-4">
+        </div>
+
+        {/* Navigation */}
+        <div className="flex-1 p-8">
+          <nav className="space-y-2">
+            <button
+              onClick={() => setActiveSection("reports")}
+              className={`w-full flex items-center gap-4 px-4 py-4 rounded-sm text-left transition-all font-medium ${
+                activeSection === "reports" 
+                  ? "bg-primary/10 text-primary shadow-soft" 
+                  : "hover:bg-muted text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <FaFileAlt className="text-lg" />
+              <span>Medical Reports</span>
+            </button>
+            <button
+              onClick={() => setActiveSection("diagnosis")}
+              className={`w-full flex items-center gap-4 px-4 py-4 rounded-sm text-left transition-all font-medium ${
+                activeSection === "diagnosis" 
+                  ? "bg-primary/10 text-primary shadow-soft" 
+                  : "hover:bg-muted text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <FaImage className="text-lg" />
+              <span>AI Diagnosis</span>
+            </button>
+            <button
+              onClick={() => setActiveSection("profile")}
+              className={`w-full flex items-center gap-4 px-4 py-4 rounded-sm text-left transition-all font-medium ${
+                activeSection === "profile" 
+                  ? "bg-primary/10 text-primary shadow-soft" 
+                  : "hover:bg-muted text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <FaCog className="text-lg" />
+              <span>Profile Settings</span>
+            </button>
+          </nav>
+        </div>
+
+        {/* Logout Section */}
+        <div className="p-6 border-t border-border">
+          <Button 
+            variant="ghost" 
+            onClick={handleLogout}
+            className="w-full justify-start gap-4 px-4 py-4 h-auto text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm"
+          >
+            <FaSignOutAlt className="text-lg" />
+            <span className="font-medium">Logout</span>
+          </Button>
+        </div>
+      </div>
+
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col relative z-10">
+        {/* Top Header */}
+        <div className="bg-card/50 backdrop-blur-sm border-b border-border px-8 py-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-bold">
+                {activeSection === "reports" && "Medical Reports"}
+                {activeSection === "diagnosis" && "AI Image Diagnosis"}
+                {activeSection === "profile" && "Profile Settings"}
+              </h2>
+              <p className="text-muted-foreground mt-1">
+                {activeSection === "reports" && "Manage and view your medical records"}
+                {activeSection === "diagnosis" && "Upload images for AI-powered analysis"}
+                {activeSection === "profile" && "Update your personal information"}
+              </p>
+            </div>
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
+              <div className="text-right">
+                <p className="font-semibold">{user.name}</p>
+                <p className="text-sm text-muted-foreground">{user.email}</p>
+              </div>
+              <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
                 <FaUser className="text-primary" />
               </div>
-              <div className="hidden md:block">
-                <p className="text-sm font-medium">{user.name}</p>
-                <p className="text-xs text-muted-foreground">{user.email}</p>
-              </div>
             </div>
-            
-            <Button variant="ghost" size="sm" onClick={handleLogout}>
-              <FaSignOutAlt className="mr-2" />
-              Logout
-            </Button>
           </div>
         </div>
-      </header>
 
-      <div className="w-full px-6 lg:px-12 py-6">
-        <div className="flex flex-col lg:flex-row gap-6">
-          {/* Sidebar Navigation */}
-          <div className="lg:w-64 lg:sticky lg:top-6 lg:self-start">
-            <Card className="shadow-soft">
-              <CardContent className="p-4">
-                <nav className="space-y-2">
-                  <button
-                    onClick={() => setActiveSection("reports")}
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-sm text-left transition-colors font-medium ${
-                      activeSection === "reports" 
-                        ? "bg-primary/10 text-primary" 
-                        : "hover:bg-muted"
-                    }`}
-                  >
-                    <FaFileAlt />
-                    Reports
-                  </button>
-                  <button
-                    onClick={() => setActiveSection("diagnosis")}
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-sm text-left transition-colors font-medium ${
-                      activeSection === "diagnosis" 
-                        ? "bg-primary/10 text-primary" 
-                        : "hover:bg-muted"
-                    }`}
-                  >
-                    <FaImage />
-                    AI Diagnosis
-                  </button>
-                  <button
-                    onClick={() => setActiveSection("profile")}
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-sm text-left transition-colors font-medium ${
-                      activeSection === "profile" 
-                        ? "bg-primary/10 text-primary" 
-                        : "hover:bg-muted"
-                    }`}
-                  >
-                    <FaCog />
-                    Profile Settings
-                  </button>
-                </nav>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Main Content */}
-          <div className="flex-1">
-            {activeSection === "reports" && renderReportsSection()}
-            {activeSection === "diagnosis" && renderImageDiagnosisSection()}
-            {activeSection === "profile" && renderProfileSection()}
-          </div>
+        {/* Page Content */}
+        <div className="flex-1 p-8 overflow-auto">
+          {activeSection === "reports" && renderReportsSection()}
+          {activeSection === "diagnosis" && renderImageDiagnosisSection()}
+          {activeSection === "profile" && renderProfileSection()}
         </div>
       </div>
     </div>
