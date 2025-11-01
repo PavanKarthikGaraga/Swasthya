@@ -1,8 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Badge } from "@/components/ui/badge";
-import { Award, Clock, Shield, Users, Zap, HeartPulse, Check } from "lucide-react";
+import { Award, Clock, Shield, Users, Zap, HeartPulse } from "lucide-react";
 
 export function WhyChooseUs() {
   const benefits = [
@@ -59,7 +58,7 @@ export function WhyChooseUs() {
             <span className="text-teal-600">Advantage</span>
           </h2>
           <p className="text-sm md:text-base text-gray-600 max-w-2xl mx-auto">
-            Experience healthcare that's smarter, faster, and more personalized
+            Experience healthcare that&apos;s smarter, faster, and more personalized
           </p>
         </motion.div>
 
@@ -73,7 +72,7 @@ export function WhyChooseUs() {
               transition={{ duration: 0.5, delay: index * 0.1 }}
               className="flex gap-4 group"
             >
-              <div className={`flex-shrink-0 w-16 h-16 rounded-xl bg-gradient-to-br ${benefit.color} p-4 shadow-lg group-hover:scale-110 transition-transform`}>
+              <div className={`shrink-0 w-16 h-16 rounded-xl bg-linear-to-br ${benefit.color} p-4 shadow-lg group-hover:scale-110 transition-transform`}>
                 <benefit.icon className="w-full h-full text-white" />
               </div>
               <div>

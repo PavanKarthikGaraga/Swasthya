@@ -1,9 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
-import { UserPlus, Scan, FileCheck, Stethoscope, ArrowDown, CheckCircle } from "lucide-react";
+import { UserPlus, Scan, FileCheck, Stethoscope } from "lucide-react";
 
 export function HowItWorks() {
   const steps = [
@@ -81,7 +79,7 @@ export function HowItWorks() {
               
               {/* Icon Container */}
               <div className="relative z-10 mb-8">
-                <div className="w-20 h-20 bg-gradient-to-br from-teal-500 to-teal-600 rounded-3xl p-5 mx-auto group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 shadow-2xl shadow-teal-500/25">
+                <div className="w-20 h-20 bg-linear-to-br from-teal-500 to-teal-600 rounded-3xl p-5 mx-auto transition-all duration-300 shadow-2xl shadow-teal-500/25">
                   <step.icon className="w-full h-full text-white" />
                 </div>
               </div>
@@ -98,7 +96,7 @@ export function HowItWorks() {
 
               {/* Connecting Line (except for last item) */}
               {index < steps.length - 1 && (
-                <div className="hidden lg:block absolute top-10 -right-6 w-12 h-0.5 bg-gradient-to-r from-teal-200 to-transparent"></div>
+                <div className="hidden lg:block absolute top-10 -right-6 w-12 h-0.5 bg-linear-to-r from-teal-200 to-transparent"></div>
               )}
             </motion.div>
           ))}

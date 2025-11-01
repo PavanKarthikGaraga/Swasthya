@@ -1,7 +1,6 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
@@ -9,7 +8,6 @@ import {
   Brain,
   Activity,
   Stethoscope,
-  Sparkles,
   CheckCircle,
   Microscope,
   Fingerprint,
@@ -101,7 +99,7 @@ export function Features() {
     >
       <Card className="h-full bg-white border border-gray-200 hover:border-teal-400 hover:shadow-xl transition-all duration-300 group rounded-2xl overflow-hidden">
         <CardHeader className="pb-3">
-          <div className={`w-12 h-12 rounded-xl ${feature.iconColor} p-3 mb-3 group-hover:scale-110 group-hover:rotate-3 transition-transform shadow-lg`}>
+          <div className={`w-12 h-12 rounded-xl ${feature.iconColor} p-3 mb-3 transition-transform shadow-lg`}>
             <feature.icon className="w-full h-full text-white" />
           </div>
           <CardTitle className="text-lg font-bold text-gray-900">{feature.title}</CardTitle>

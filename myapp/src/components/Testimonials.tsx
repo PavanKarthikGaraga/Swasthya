@@ -1,8 +1,8 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Card, CardContent } from "@/components/ui/card";
 import { Marquee } from "@/components/ui/marquee";
 import { Star, Quote } from "lucide-react";
 
@@ -77,31 +77,33 @@ export function Testimonials() {
     color: string;
   }) => {
     return (
-      <div className="bg-gradient-to-br from-gray-50 to-white border-l-4 border-teal-500 rounded-2xl p-4 hover:shadow-xl transition-all duration-300 relative w-[350px] mx-2">
-        <Quote className="absolute top-4 right-4 h-10 w-10 text-teal-100" />
-        
-        <div className="flex gap-1 mb-4">
-          {[...Array(rating)].map((_, i) => (
-            <Star key={i} className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-          ))}
-        </div>
-        
-        <p className="text-sm text-gray-700 leading-relaxed mb-6 relative z-10">
-          "{quote}"
-        </p>
-        
-        <div className="flex items-center gap-3">
-          <Avatar className="w-12 h-12 border-2 border-white shadow-lg">
-            <AvatarFallback className={`${color} text-white font-bold text-sm`}>
-              {avatar}
-            </AvatarFallback>
-          </Avatar>
-          <div>
-            <div className="text-sm font-bold text-gray-900">{name}</div>
-            <div className="text-xs text-gray-600">{role}</div>
+      <Card className="bg-linear-to-br from-gray-50 to-white border border-teal-500 rounded-2xl hover:shadow-xl transition-all duration-300 relative w-[350px] overflow-hidden">
+        <Quote className="absolute top-4 right-4 h-10 w-10 text-teal-100 z-10" />
+
+        <CardContent className="p-4 relative">
+          <div className="flex gap-1 mb-4">
+            {[...Array(rating)].map((_, i) => (
+              <Star key={i} className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+            ))}
           </div>
-        </div>
-      </div>
+
+          <p className="text-sm text-gray-700 leading-relaxed mb-6 relative z-10">
+            &quot;{quote}&quot;
+          </p>
+
+          <div className="flex items-center gap-3">
+            <Avatar className="w-12 h-12 border-2 border-white shadow-lg">
+              <AvatarFallback className={`${color} text-white font-bold text-sm`}>
+                {avatar}
+              </AvatarFallback>
+            </Avatar>
+            <div>
+              <div className="text-sm font-bold text-gray-900">{name}</div>
+              <div className="text-xs text-gray-600">{role}</div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     );
   };
 

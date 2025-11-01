@@ -32,10 +32,10 @@ export function Navigation() {
           initial={{ y: -100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-          className={`backdrop-blur-xl bg-white/90 border-gray-200 shadow-xl transition-all duration-500 ease-out ${
+          className={`transition-all duration-500 ease-out ${
             isScrolled
-              ? "rounded-2xl border"
-              : "rounded-none shadow-none border-none bg-tranparent"
+              ? "backdrop-blur-xl bg-white/90 border-gray-200 shadow-xl rounded-2xl border"
+              : "bg-transparent shadow-none border-none"
           }`}
         >
           <div className="max-w-7xl mx-auto px-6 py-3">

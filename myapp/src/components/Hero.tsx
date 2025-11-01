@@ -2,9 +2,8 @@
 
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
-import { Sparkles, Zap, ArrowRight, Activity, Clock } from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { Zap, ArrowRight, Activity } from "lucide-react";
 
 const fadeInUp = {
   initial: { opacity: 0, y: 30 },
@@ -23,7 +22,8 @@ const staggerContainer = {
 export function Hero() {
   return (
     <section className="min-h-screen flex items-center justify-center pt-32 pb-16 px-4 relative bg-white">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-teal-100/50 via-transparent to-transparent"></div>
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,var(--tw-gradient-stops))] from-teal-50/60 via-teal-25/40 to-white"></div>
+      <div className="absolute inset-0 bg-linear-to-br from-transparent via-teal-50/20 to-teal-100/30"></div>
       <div className="container mx-auto w-[85%] max-w-7xl relative z-10">
         <motion.div
           initial="initial"
@@ -64,17 +64,15 @@ export function Hero() {
               <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
             </Button>
             
-            <HoverCard>
-              <HoverCardTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="rounded-xl px-8 py-5 text-sm font-semibold border-2 border-gray-300 hover:border-teal-600 hover:bg-teal-50 transition-all bg-white"
-                >
-                  <Activity className="mr-2 h-4 w-4" />
-                  Watch Demo
-                </Button>
-              </HoverCardTrigger>
-            </HoverCard>
+            <Card className="border-2 border-gray-300 hover:border-teal-600 hover:bg-teal-50 hover:shadow-lg transition-all duration-300 bg-white rounded-xl overflow-hidden">
+              <Button
+                variant="ghost"
+                className="w-full h-full px-8 py-5 text-sm font-semibold hover:bg-transparent"
+              >
+                <Activity className="mr-2 h-4 w-4" />
+                Watch Demo
+              </Button>
+            </Card>
           </motion.div>
         </motion.div>
       </div>

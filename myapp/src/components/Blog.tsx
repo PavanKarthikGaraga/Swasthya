@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { ArrowRight, Calendar, Clock } from "lucide-react";
 
 export function Blog() {
@@ -63,21 +63,21 @@ export function Blog() {
               transition={{ duration: 0.5, delay: index * 0.1 }}
               className="group"
             >
-              <div className="bg-white rounded-xl border border-gray-200 hover:border-teal-300 hover:shadow-lg transition-all duration-300 overflow-hidden">
+              <Card className="bg-white border border-gray-200 hover:border-teal-300 hover:shadow-lg transition-all duration-300 overflow-hidden group">
                 <div className={`h-48 ${article.image} relative`}>
                   <Badge className="absolute top-3 left-3 bg-white text-gray-900 text-xs">
                     {article.category}
                   </Badge>
                 </div>
-                
-                <div className="p-6">
+
+                <CardContent className="p-6">
                   <h3 className="text-lg font-bold text-gray-900 mb-3 group-hover:text-teal-600 transition-colors">
                     {article.title}
                   </h3>
                   <p className="text-sm text-gray-600 leading-relaxed mb-4">
                     {article.excerpt}
                   </p>
-                  
+
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3 text-xs text-gray-500">
                       <div className="flex items-center gap-1">
@@ -94,8 +94,8 @@ export function Blog() {
                       <ArrowRight className="ml-1 h-3 w-3" />
                     </Button>
                   </div>
-                </div>
-              </div>
+                </CardContent>
+              </Card>
             </motion.div>
           ))}
         </div>
