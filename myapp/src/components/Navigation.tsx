@@ -74,16 +74,20 @@ export function Navigation() {
 
               {/* CTA Buttons */}
               <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  className="text-xs font-semibold rounded-xl hover:bg-teal-50 h-8"
-                >
-                  Sign In
-                </Button>
-                <Button className="bg-teal-600 hover:bg-teal-700 text-white rounded-xl shadow-md shadow-teal-600/30 px-4 h-8 text-xs font-semibold">
-                  Get Started
-                  <ArrowRight className="ml-1.5 h-3 w-3" />
-                </Button>
+                <Link href="/login">
+                  <Button
+                    variant="ghost"
+                    className="text-xs font-semibold rounded-xl hover:bg-teal-50 h-8"
+                  >
+                    Sign In
+                  </Button>
+                </Link>
+                <Link href="/signup">
+                  <Button className="bg-teal-600 hover:bg-teal-700 text-white rounded-xl shadow-md shadow-teal-600/30 px-4 h-8 text-xs font-semibold">
+                    Get Started
+                    <ArrowRight className="ml-1.5 h-3 w-3" />
+                  </Button>
+                </Link>
               </div>
             </div>
           </div>
