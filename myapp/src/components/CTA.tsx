@@ -1,66 +1,110 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, useInView } from "framer-motion";
+import { useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Sparkles, ArrowRight, MessageSquare, CheckCircle } from "lucide-react";
+import Link from "next/link";
 
 export function CTA() {
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true, margin: "-100px" });
+
   return (
-    <section className="flex items-center justify-center py-12 px-4 bg-gray-50">
-      <div className="container mx-auto w-[85%] max-w-5xl">
+    <section ref={ref} className="py-32 bg-muted/30 relative overflow-hidden">
+      {/* Subtle Background Elements */}
+      <div className="absolute inset-0 bg-[linear-gradient(rgba(20,184,166,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(20,184,166,0.03)_1px,transparent_1px)] bg-[size:80px_80px] opacity-50" />
+
+      <div className="container mx-auto px-6 lg:px-12 relative z-10">
         <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          whileInView={{ opacity: 1, scale: 1 }}
-          viewport={{ once: true }}
+          initial={{ opacity: 0, y: 20 }}
+          animate={isInView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6 }}
-          className="relative rounded-3xl overflow-hidden bg-teal-600 shadow-xl">
-          <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48cGF0dGVybiBpZD0iYSIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSIgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBwYXR0ZXJuVHJhbnNmb3JtPSJyb3RhdGUoNDUpIj48cGF0aCBkPSJNLTEwIDMwaDYwdjJoLTYwek0tMTAgMTBoNjB2MmgtNjB6IiBmaWxsPSIjZmZmIiBmaWxsLW9wYWNpdHk9Ii4wNSIvPjwvcGF0dGVybj48L2RlZnM+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0idXJsKCNhKSIvPjwvc3ZnPg==')] opacity-50" />
-          
-          <div className="relative p-12 md:p-16 text-center">
-            <Badge className="mb-6 bg-white/20 backdrop-blur-sm text-white border-white/30 px-3 py-1.5 text-xs font-semibold hover:bg-white/20">
-              <Sparkles className="h-3 w-3 mr-1" />
-              Limited Time Offer
-            </Badge>
-            
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4 tracking-tight">
-              Start Your Health Journey
-              <br />
-              Today - It's Free!
-            </h2>
-            
-            <p className="text-base md:text-lg text-teal-50 mb-10 max-w-xl mx-auto leading-relaxed">
-              Join 50,000+ users who've transformed their healthcare experience. No credit card required.
-            </p>
-            
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-              <Button className="bg-white text-teal-600 hover:bg-teal-50 rounded-xl px-8 py-5 text-sm font-semibold shadow-xl hover:shadow-2xl transition-all group">
-                <Sparkles className="mr-2 h-4 w-4" />
-                Get Started Free
-                <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
-              </Button>
-              
-              <Button variant="outline" className="bg-white/10 backdrop-blur-sm text-white border-2 border-white/30 hover:bg-white/20 rounded-xl px-8 py-5 text-sm font-semibold">
-                <MessageSquare className="mr-2 h-4 w-4" />
-                Talk to Sales
-              </Button>
+          className="max-w-4xl mx-auto text-center"
+        >
+          {/* Main Content */}
+          <div className="space-y-8">
+            {/* Badge */}
+            <div className="flex justify-center">
+              <div className="inline-flex items-center gap-3 px-4 py-2 bg-primary/5 border border-primary/20 rounded-full">
+                <span className="w-2 h-2 bg-primary rounded-full animate-pulse" />
+                <span className="text-xs uppercase tracking-wider text-primary font-medium">
+                  Get Started Today
+                </span>
+              </div>
             </div>
 
-            <div className="mt-10 flex flex-wrap items-center justify-center gap-5 text-white/90 text-xs">
-              <div className="flex items-center gap-1.5">
-                <CheckCircle className="h-4 w-4" />
-                <span>Free 30-day trial</span>
+            {/* Heading */}
+            <h2 className="text-5xl md:text-6xl lg:text-7xl font-bold leading-tight">
+              Ready to transform your{" "}
+              <span className="text-gradient">healthcare experience</span>?
+            </h2>
+            
+            {/* Description */}
+            <p className="text-xl text-muted-foreground leading-relaxed max-w-2xl mx-auto">
+              Join thousands of users who trust Swasthya with their health data.
+              Start your free trial today, no credit card required.
+            </p>
+            
+            {/* CTA Buttons */}
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-8">
+              <Link href="/signup">
+                <Button
+                  size="lg"
+                  className="w-full sm:w-auto px-10 py-7 text-lg font-medium bg-foreground text-background hover:bg-foreground/90 rounded-sm"
+                >
+                  Start Free Trial
+              </Button>
+              </Link>
+              <Link href="/demo">
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="w-full sm:w-auto px-10 py-7 text-lg font-medium border-2 rounded-sm"
+                >
+                  Schedule Demo
+              </Button>
+              </Link>
+            </div>
+
+            {/* Trust Indicators */}
+            <div className="flex flex-wrap items-center justify-center gap-8 pt-12 text-sm text-muted-foreground">
+              <div className="flex items-center gap-2">
+                <div className="w-1.5 h-1.5 bg-primary rounded-full" />
+                <span>No credit card required</span>
               </div>
-              <div className="flex items-center gap-1.5">
-                <CheckCircle className="h-4 w-4" />
-                <span>No credit card</span>
+              <div className="flex items-center gap-2">
+                <div className="w-1.5 h-1.5 bg-primary rounded-full" />
+                <span>30-day free trial</span>
               </div>
-              <div className="flex items-center gap-1.5">
-                <CheckCircle className="h-4 w-4" />
+              <div className="flex items-center gap-2">
+                <div className="w-1.5 h-1.5 bg-primary rounded-full" />
                 <span>Cancel anytime</span>
               </div>
             </div>
           </div>
+
+          {/* Stats Bar */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={isInView ? { opacity: 1, y: 0 } : {}}
+            transition={{ duration: 0.6, delay: 0.2 }}
+            className="mt-24 pt-16 border-t border-border"
+          >
+            <div className="grid grid-cols-3 gap-8">
+              <div>
+                <div className="text-4xl md:text-5xl font-bold mb-2">10K+</div>
+                <div className="text-sm text-muted-foreground uppercase tracking-wider">Active Users</div>
+              </div>
+              <div>
+                <div className="text-4xl md:text-5xl font-bold mb-2">99.9%</div>
+                <div className="text-sm text-muted-foreground uppercase tracking-wider">Uptime SLA</div>
+              </div>
+              <div>
+                <div className="text-4xl md:text-5xl font-bold mb-2">4.9/5</div>
+                <div className="text-sm text-muted-foreground uppercase tracking-wider">User Rating</div>
+              </div>
+            </div>
+          </motion.div>
         </motion.div>
       </div>
     </section>

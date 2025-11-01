@@ -1,124 +1,171 @@
 "use client";
 
-import { motion } from "framer-motion";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
-import { UserPlus, Scan, FileCheck, Stethoscope, ArrowDown, CheckCircle } from "lucide-react";
+import { motion, useInView } from "framer-motion";
+import { useRef } from "react";
 
-export function HowItWorks() {
   const steps = [
     {
-      icon: UserPlus,
-      step: "01",
-      title: "Create Your Profile",
-      description: "Sign up in under 30 seconds and build your comprehensive health profile with medical history, current medications, and health goals.",
-      features: ["Quick registration", "Medical history upload", "Privacy protected"],
-      color: "bg-teal-600",
-      bgColor: "bg-teal-50"
+    number: "01",
+    title: "Upload & Encrypt",
+    description: "Upload your medical records, prescriptions, and test results. All data is automatically encrypted with 256-bit AES before leaving your device.",
     },
     {
-      icon: Scan,
-      step: "02", 
-      title: "AI Health Analysis",
-      description: "Upload symptoms, images, or lab reports for instant AI-powered analysis using advanced machine learning algorithms.",
-      features: ["Image recognition", "Symptom checker", "Lab interpretation"],
-      color: "bg-cyan-600",
-      bgColor: "bg-cyan-50"
+    number: "02",
+    title: "Blockchain Storage",
+    description: "Encrypted data is distributed across our blockchain network, creating an immutable, tamper-proof record of your health history.",
     },
     {
-      icon: FileCheck,
-      step: "03",
-      title: "Personalized Results",
-      description: "Get detailed health insights, risk assessments, and personalized recommendations tailored to your unique profile.",
-      features: ["Detailed reports", "Risk analysis", "Custom recommendations"],
-      color: "bg-blue-600",
-      bgColor: "bg-blue-50"
-    },
-    {
-      icon: Stethoscope,
-      step: "04",
-      title: "Expert Consultation",
-      description: "Connect with board-certified doctors for video consultations, second opinions, and ongoing care management.",
-      features: ["Video consultations", "Expert opinions", "Follow-up care"],
-      color: "bg-indigo-600",
-      bgColor: "bg-indigo-50"
-    },
-  ];
+    number: "03",
+    title: "AI Analysis",
+    description: "Advanced machine learning models analyze your health data to provide instant insights, predictions, and personalized recommendations.",
+  },
+  {
+    number: "04",
+    title: "Access Anywhere",
+    description: "Retrieve your complete medical history from any device, anytime. Share with healthcare providers with granular permission controls.",
+  },
+];
+
+const techStack = [
+  {
+    label: "Blockchain Layer",
+    items: ["Ethereum Network", "IPFS Storage", "Smart Contracts"],
+  },
+  {
+    label: "AI & Analytics",
+    items: ["TensorFlow Models", "PyTorch Neural Nets", "GPT Integration"],
+  },
+  {
+    label: "Security Layer",
+    items: ["256-bit AES Encryption", "Zero-Knowledge Proofs", "Multi-Factor Auth"],
+  },
+];
+
+export function HowItWorks() {
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true, margin: "-100px" });
 
   return (
-    <section id="how-it-works" className="flex items-center justify-center py-12 px-4 bg-white">
-      <div className="container mx-auto w-[85%] max-w-6xl">
+    <section ref={ref} id="how-it-works" className="py-32 bg-muted/30">
+      <div className="container mx-auto px-6 lg:px-12">
+        <div className="max-w-7xl mx-auto">
+          {/* Section Header */}
         <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6 }}
-          className="text-center mb-20"
-        >
-          <h2 className="text-4xl md:text-5xl font-bold mb-6 tracking-tight text-gray-900">
-            Simple Steps to{" "}
-            <span className="text-teal-600">Better Health</span>
+            initial={{ opacity: 0, y: 20 }}
+            animate={isInView ? { opacity: 1, y: 0 } : {}}
+            transition={{ duration: 0.8 }}
+            className="max-w-3xl mb-24"
+          >
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/5 border border-primary/20 rounded-full mb-6">
+              <span className="text-sm font-medium">How It Works</span>
+            </div>
+            
+            <h2 className="text-5xl md:text-6xl font-bold leading-tight mb-6">
+              Four simple steps to{" "}
+              <span className="text-gradient">complete control</span>
           </h2>
-          <p className="text-lg text-gray-600 max-w-3xl mx-auto leading-relaxed">
-            Get started with Swasthya in just a few easy steps and transform your healthcare experience
+
+            <p className="text-xl text-muted-foreground leading-relaxed">
+              From upload to insights in minutes. Your health data journey,
+              secured by blockchain and powered by AI.
           </p>
         </motion.div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-12">
+          {/* Process Steps */}
+          <div className="relative">
+            {/* Connection Line - Desktop */}
+            <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-px bg-gradient-to-r from-transparent via-border to-transparent hidden lg:block" />
+
+            {/* Steps Grid */}
+            <div className="grid lg:grid-cols-4 gap-8 lg:gap-4 relative">
           {steps.map((step, index) => (
             <motion.div
               key={index}
-              initial={{ opacity: 0, y: 40 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={isInView ? { opacity: 1, y: 0 } : {}}
               transition={{ duration: 0.6, delay: index * 0.15 }}
-              className="relative text-center group"
+                  className="relative group"
             >
-              {/* Background Number */}
-              <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 text-8xl font-black text-teal-50 select-none pointer-events-none">
-                {step.step}
-              </div>
-              
-              {/* Icon Container */}
-              <div className="relative z-10 mb-8">
-                <div className="w-20 h-20 bg-gradient-to-br from-teal-500 to-teal-600 rounded-3xl p-5 mx-auto group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 shadow-2xl shadow-teal-500/25">
-                  <step.icon className="w-full h-full text-white" />
+                  {/* Step Card */}
+                  <div className="bg-card border border-border rounded-2xl p-8 hover:border-primary/30 transition-all duration-300 relative h-full">
+                    {/* Number Badge */}
+                    <div className="absolute -top-6 left-8">
+                      <div className="w-12 h-12 bg-primary text-primary-foreground border-4 border-background rounded-full flex items-center justify-center font-bold text-sm shadow-lg">
+                        {step.number}
                 </div>
               </div>
 
               {/* Content */}
-              <div className="relative z-10">
-                <h3 className="text-xl font-bold text-gray-900 mb-4 group-hover:text-teal-600 transition-colors duration-300">
-                  {step.title}
-                </h3>
-                <p className="text-base text-gray-600 leading-relaxed px-2">
+                    <div className="pt-8 space-y-4">
+                      <h3 className="text-2xl font-bold">{step.title}</h3>
+                      <p className="text-muted-foreground leading-relaxed">
                   {step.description}
                 </p>
               </div>
 
-              {/* Connecting Line (except for last item) */}
+                    {/* Decorative Line */}
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={isInView ? { width: "100%" } : {}}
+                      transition={{ duration: 0.8, delay: 0.8 + index * 0.15 }}
+                      className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-primary/50 to-transparent"
+                    />
+                  </div>
+
+                  {/* Arrow - Desktop Only */}
               {index < steps.length - 1 && (
-                <div className="hidden lg:block absolute top-10 -right-6 w-12 h-0.5 bg-gradient-to-r from-teal-200 to-transparent"></div>
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0 }}
+                      animate={isInView ? { opacity: 1, scale: 1 } : {}}
+                      transition={{ duration: 0.5, delay: 0.8 + index * 0.15 }}
+                      className="hidden lg:flex absolute -right-2 top-1/2 -translate-y-1/2 z-20 w-4 h-4 items-center justify-center"
+                    >
+                      <div className="w-2 h-2 bg-primary rounded-full" />
+                    </motion.div>
               )}
             </motion.div>
           ))}
+            </div>
         </div>
 
-        {/* Bottom CTA */}
+          {/* Technology Stack */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6, delay: 0.8 }}
-          className="text-center mt-20"
-        >
-          <div className="inline-flex items-center gap-2 bg-teal-50 text-teal-700 px-6 py-3 rounded-full text-sm font-medium border border-teal-200">
-            <div className="w-2 h-2 bg-teal-500 rounded-full animate-pulse"></div>
-            Ready to start your health journey?
+            animate={isInView ? { opacity: 1, y: 0 } : {}}
+            transition={{ duration: 0.8, delay: 1 }}
+            className="mt-32"
+          >
+            <div className="text-center mb-12">
+              <h3 className="text-3xl font-bold mb-4">Built on proven technology</h3>
+              <p className="text-muted-foreground max-w-2xl mx-auto">
+                Enterprise-grade infrastructure powering secure healthcare data management
+              </p>
+            </div>
+
+            <div className="grid md:grid-cols-3 gap-8">
+              {techStack.map((tech, index) => (
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={isInView ? { opacity: 1, y: 0 } : {}}
+                  transition={{ duration: 0.6, delay: 1.2 + index * 0.15 }}
+                  className="p-8 bg-card border border-border rounded-2xl hover:border-primary/30 transition-colors"
+                >
+                  <h4 className="font-bold text-xl mb-6">{tech.label}</h4>
+                  <div className="space-y-3">
+                    {tech.items.map((item, i) => (
+                      <div key={i} className="flex items-start gap-3">
+                        <div className="w-1.5 h-1.5 bg-primary rounded-full mt-2 flex-shrink-0" />
+                        <span className="text-muted-foreground leading-relaxed">{item}</span>
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+              ))}
           </div>
         </motion.div>
+        </div>
       </div>
     </section>
   );
 }
-

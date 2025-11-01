@@ -60,9 +60,17 @@ export default function LoginPage() {
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 2000));
       
-      // For demo purposes, redirect to dashboard
+      // For demo purposes, check if user profile is complete
       console.log("Login attempt:", formData);
-      router.push("/dashboard");
+      
+      // Simulate checking if user has completed onboarding
+      const hasCompletedOnboarding = localStorage.getItem("onboardingCompleted");
+      
+      if (hasCompletedOnboarding) {
+        router.push("/dashboard");
+      } else {
+        router.push("/onboarding");
+      }
     } catch (error) {
       console.error("Login error:", error);
       setErrors({ general: "Login failed. Please try again." });
@@ -78,7 +86,15 @@ export default function LoginPage() {
       // Simulate Google OAuth
       await new Promise(resolve => setTimeout(resolve, 1500));
       console.log("Google login initiated");
-      router.push("/dashboard");
+      
+      // Check if user has completed onboarding
+      const hasCompletedOnboarding = localStorage.getItem("onboardingCompleted");
+      
+      if (hasCompletedOnboarding) {
+        router.push("/dashboard");
+      } else {
+        router.push("/onboarding");
+      }
     } catch (error) {
       console.error("Google login error:", error);
       setErrors({ general: "Google login failed. Please try again." });
@@ -105,16 +121,16 @@ export default function LoginPage() {
               <div className="absolute inset-0 flex items-center">
                 <Separator className="w-full" />
               </div>
-              <div className="relative flex justify-center text-xs">
-                <span className="bg-white px-2 text-gray-500">
+              <div className="relative flex justify-center text-sm">
+                <span className="bg-card px-4 text-muted-foreground">
                   or
                 </span>
               </div>
             </div>
 
             {/* Email Input */}
-            <div className="space-y-1">
-              <Label htmlFor="email" className="text-sm text-gray-700">Email</Label>
+            <div className="space-y-2">
+              <Label htmlFor="email" className="text-sm font-medium">Email</Label>
               <Input
                 id="email"
                 name="email"
@@ -123,20 +139,20 @@ export default function LoginPage() {
                 value={formData.email}
                 onChange={handleInputChange}
                 disabled={isLoading}
-                className={`h-10 ${errors.email ? "border-red-500" : ""}`}
+                className={`h-12 rounded-sm ${errors.email ? "border-destructive" : ""}`}
               />
               {errors.email && (
-                <p className="text-xs text-red-500">{errors.email}</p>
+                <p className="text-sm text-destructive">{errors.email}</p>
               )}
             </div>
 
             {/* Password Input */}
-            <div className="space-y-1">
+            <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label htmlFor="password" className="text-sm text-gray-700">Password</Label>
+                <Label htmlFor="password" className="text-sm font-medium">Password</Label>
                 <Link
                   href="/forgot-password"
-                  className="text-xs text-teal-600 hover:underline"
+                  className="text-sm text-primary hover:underline"
                 >
                   Forgot?
                 </Link>
@@ -150,11 +166,11 @@ export default function LoginPage() {
                   value={formData.password}
                   onChange={handleInputChange}
                   disabled={isLoading}
-                  className={`h-10 pr-10 ${errors.password ? "border-red-500" : ""}`}
+                  className={`h-12 pr-12 rounded-sm ${errors.password ? "border-destructive" : ""}`}
                 />
                 <button
                   type="button"
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                   onClick={() => setShowPassword(!showPassword)}
                   disabled={isLoading}
                 >
@@ -162,25 +178,25 @@ export default function LoginPage() {
                 </button>
               </div>
               {errors.password && (
-                <p className="text-xs text-red-500">{errors.password}</p>
+                <p className="text-sm text-destructive">{errors.password}</p>
               )}
             </div>
 
           {/* General Error */}
           {errors.general && (
-            <div className="p-2 text-xs text-red-600 bg-red-50 rounded border border-red-200">
+            <div className="p-4 text-sm text-destructive bg-destructive/10 rounded-sm border border-destructive/20">
               {errors.general}
             </div>
           )}
 
           <Button
             type="submit"
-            className="w-full h-11 bg-teal-600 hover:bg-teal-700 text-white text-sm font-semibold rounded-lg shadow-lg shadow-teal-600/25 hover:shadow-xl hover:shadow-teal-600/30 transition-all duration-200"
+            className="w-full h-12 bg-foreground text-background hover:bg-foreground/90 font-medium rounded-sm"
             disabled={isLoading}
           >
             {isLoading ? (
               <>
-                <FaSpinner className="animate-spin text-sm" />
+                <FaSpinner className="animate-spin mr-2" />
                 Signing in...
               </>
             ) : (
@@ -188,11 +204,11 @@ export default function LoginPage() {
             )}
           </Button>
 
-          <p className="text-center text-xs text-gray-500">
+          <p className="text-center text-sm text-muted-foreground">
             Don&apos;t have an account?{" "}
             <Link
               href="/signup"
-              className="text-teal-600 hover:underline"
+              className="text-primary hover:underline font-medium"
             >
               Sign up
             </Link>

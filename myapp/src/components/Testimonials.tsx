@@ -1,143 +1,116 @@
 "use client";
 
-import { motion } from "framer-motion";
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Marquee } from "@/components/ui/marquee";
-import { Star, Quote } from "lucide-react";
+import { motion, useInView } from "framer-motion";
+import { useRef } from "react";
 
-export function Testimonials() {
   const testimonials = [
     {
-      name: "Dr. Priya Sharma",
-      role: "Cardiologist",
-      avatar: "PS",
-      rating: 5,
-      quote: "Swasthya's AI diagnosis tools have revolutionized how I analyze patient data. The accuracy is remarkable and saves hours of my time.",
-      color: "bg-teal-600"
+    quote: "Swasthya has completely transformed how we manage patient data. The blockchain security gives us peace of mind, and the AI insights are remarkably accurate.",
+    author: "Dr. Sarah Chen",
+    role: "Chief Medical Officer",
+    company: "HealthCare Systems Inc.",
+  },
+  {
+    quote: "The platform's intuitive design makes complex technology feel simple. Our patients love having complete control over their health records.",
+    author: "Michael Rodriguez",
+    role: "Director of Digital Health",
+    company: "Metro Hospital Group",
     },
     {
-      name: "Dr. Rajesh Kumar",
-      role: "General Physician",
-      avatar: "RK",
-      rating: 5,
-      quote: "The platform's intuitive design and powerful features make it indispensable for modern medical practice. Highly recommended!",
-      color: "bg-cyan-600"
-    },
-    {
-      name: "Anjali Mehta",
-      role: "Patient",
-      avatar: "AM",
-      rating: 5,
-      quote: "Getting instant health insights and connecting with doctors has never been easier. Swasthya truly cares about patient experience.",
-      color: "bg-blue-600"
-    },
-    {
-      name: "Dr. Michael Chen",
-      role: "Dermatologist",
-      avatar: "MC",
-      rating: 5,
-      quote: "The AI-powered skin analysis feature is incredibly accurate. It's like having a second opinion instantly available.",
-      color: "bg-orange-600"
-    },
-    {
-      name: "Sarah Johnson",
-      role: "Healthcare Manager",
-      avatar: "SJ",
-      rating: 5,
-      quote: "Managing patient records and coordinating care has become seamless with Swasthya. It's a game-changer for our clinic.",
-      color: "bg-indigo-600"
-    },
-    {
-      name: "Dr. Amit Patel",
-      role: "Neurologist",
-      avatar: "AP",
-      rating: 5,
-      quote: "The real-time monitoring and alert system helps me stay connected with my patients' health 24/7. Outstanding platform!",
-      color: "bg-emerald-600"
+    quote: "Finally, a solution that puts patients first. The security and accessibility features are exactly what modern healthcare needs.",
+    author: "Dr. Emily Thompson",
+    role: "Healthcare Innovation Lead",
+    company: "MedTech Solutions",
     },
   ];
 
-  const firstRow = testimonials.slice(0, testimonials.length / 2);
-  const secondRow = testimonials.slice(testimonials.length / 2);
-
-  const TestimonialCard = ({
-    avatar,
-    name,
-    role,
-    quote,
-    rating,
-    color,
-  }: {
-    avatar: string;
-    name: string;
-    role: string;
-    quote: string;
-    rating: number;
-    color: string;
-  }) => {
-    return (
-      <div className="bg-gradient-to-br from-gray-50 to-white border-l-4 border-teal-500 rounded-2xl p-4 hover:shadow-xl transition-all duration-300 relative w-[350px] mx-2">
-        <Quote className="absolute top-4 right-4 h-10 w-10 text-teal-100" />
-        
-        <div className="flex gap-1 mb-4">
-          {[...Array(rating)].map((_, i) => (
-            <Star key={i} className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-          ))}
-        </div>
-        
-        <p className="text-sm text-gray-700 leading-relaxed mb-6 relative z-10">
-          "{quote}"
-        </p>
-        
-        <div className="flex items-center gap-3">
-          <Avatar className="w-12 h-12 border-2 border-white shadow-lg">
-            <AvatarFallback className={`${color} text-white font-bold text-sm`}>
-              {avatar}
-            </AvatarFallback>
-          </Avatar>
-          <div>
-            <div className="text-sm font-bold text-gray-900">{name}</div>
-            <div className="text-xs text-gray-600">{role}</div>
-          </div>
-        </div>
-      </div>
-    );
-  };
+export function Testimonials() {
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true, margin: "-100px" });
 
   return (
-    <section id="testimonials" className="flex items-center justify-center py-12 px-4 bg-white overflow-hidden">
-      <div className="container mx-auto w-full max-w-7xl">
+    <section ref={ref} id="testimonials" className="py-32 bg-background">
+      <div className="container mx-auto px-6 lg:px-12">
+        <div className="max-w-7xl mx-auto">
+          {/* Section Header */}
         <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={isInView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6 }}
-          className="text-center mb-12"
-        >
-          <h2 className="text-3xl md:text-4xl font-bold mb-4 tracking-tight text-gray-900">
-            Loved by
-            <span className="text-teal-600"> Healthcare Professionals</span>
+            className="max-w-3xl mb-24"
+          >
+            <div className="inline-flex items-center gap-3 px-4 py-2 bg-primary/5 border border-primary/20 rounded-full mb-6">
+              <span className="w-2 h-2 bg-primary rounded-full animate-pulse" />
+              <span className="text-xs uppercase tracking-wider text-primary font-medium">
+                Testimonials
+              </span>
+            </div>
+            
+            <h2 className="text-5xl md:text-6xl font-bold leading-tight">
+              Trusted by healthcare{" "}
+              <span className="text-gradient">professionals</span>
           </h2>
-          <p className="text-sm md:text-base text-gray-600 max-w-2xl mx-auto">
-            Join thousands of doctors and patients who trust Swasthya
-          </p>
         </motion.div>
 
-        <div className="relative flex flex-col gap-4">
-          <Marquee pauseOnHover className="[--duration:40s]">
-            {firstRow.map((testimonial) => (
-              <TestimonialCard key={testimonial.name} {...testimonial} />
+          {/* Testimonials Grid */}
+          <div className="grid md:grid-cols-3 gap-8">
+            {testimonials.map((testimonial, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 20 }}
+                animate={isInView ? { opacity: 1, y: 0 } : {}}
+                transition={{ duration: 0.5, delay: index * 0.1 }}
+                className="group"
+              >
+                <div className="h-full p-8 bg-card border border-border hover:border-primary/30 transition-colors duration-300 rounded-sm">
+                  {/* Quote */}
+                  <div className="mb-8">
+                    <p className="text-lg leading-relaxed text-foreground">
+                      "{testimonial.quote}"
+                    </p>
+                  </div>
+
+                  {/* Author Info */}
+                  <div className="space-y-1 border-t border-border pt-6">
+                    <div className="font-bold">{testimonial.author}</div>
+                    <div className="text-sm text-muted-foreground">{testimonial.role}</div>
+                    <div className="text-sm text-muted-foreground">{testimonial.company}</div>
+                  </div>
+                </div>
+              </motion.div>
             ))}
-          </Marquee>
-          <Marquee reverse pauseOnHover className="[--duration:40s]">
-            {secondRow.map((testimonial) => (
-              <TestimonialCard key={testimonial.name} {...testimonial} />
+          </div>
+
+          {/* Trust Indicators */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={isInView ? { opacity: 1, y: 0 } : {}}
+            transition={{ duration: 0.6, delay: 0.4 }}
+            className="mt-24 pt-16 border-t border-border"
+          >
+            <div className="text-center mb-12">
+              <h3 className="text-2xl font-bold mb-2">Industry Compliance & Security</h3>
+              <p className="text-muted-foreground">
+                Meeting the highest standards in healthcare technology
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+              {["HIPAA Compliant", "ISO 27001", "SOC 2 Type II", "GDPR Ready"].map((badge, index) => (
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={isInView ? { opacity: 1, y: 0 } : {}}
+                  transition={{ duration: 0.4, delay: 0.5 + index * 0.05 }}
+                  className="flex items-center justify-center p-6 border border-border rounded-sm bg-card"
+                >
+                  <span className="text-sm font-medium text-center">{badge}</span>
+                </motion.div>
             ))}
-          </Marquee>
+            </div>
+          </motion.div>
         </div>
       </div>
     </section>
   );
 }
-

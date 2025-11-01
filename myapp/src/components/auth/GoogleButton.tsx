@@ -18,11 +18,11 @@ export function GoogleButton({
     <Button
       type="button"
       variant="outline"
-      className="w-full h-11 border-2 border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-sm font-medium text-gray-700 transition-all duration-200 shadow-sm hover:shadow-md"
+      className="w-full h-12 border-2 border-border hover:border-border/80 hover:bg-muted/50 font-medium rounded-sm"
       onClick={onClick}
       disabled={disabled}
     >
-      <FaGoogle className="text-red-500 text-sm mr-2" />
+      <FaGoogle className="text-red-500 mr-2" />
       {text}
     </Button>
   );
