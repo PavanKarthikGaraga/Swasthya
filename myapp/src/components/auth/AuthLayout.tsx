@@ -39,7 +39,7 @@ export function AuthLayout({ children, title, subtitle }: AuthLayoutProps) {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.1 }}
-          className="bg-card border border-border rounded-2xl shadow-medium p-8"
+          className="bg-card/80 backdrop-blur-sm border border-border rounded-2xl shadow-medium p-8"
         >
           {/* Header inside card */}
           <div className="text-center space-y-3 mb-8">
@@ -59,11 +59,11 @@ export function AuthLayout({ children, title, subtitle }: AuthLayoutProps) {
         >
           <p>
             By continuing, you agree to our{" "}
-            <Link href="/terms" className="text-primary hover:underline transition-colors">
+            <Link href="/terms" className="text-primary hover:underline transition-colors font-medium">
               Terms
             </Link>{" "}
             and{" "}
-            <Link href="/privacy" className="text-primary hover:underline transition-colors">
+            <Link href="/privacy" className="text-primary hover:underline transition-colors font-medium">
               Privacy Policy
             </Link>
           </p>
