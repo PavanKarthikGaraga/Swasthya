@@ -68,10 +68,10 @@ export const GET = withAuth(async (request: NextRequest, user: any) => {
 
 export const POST = withAuth(async (request: NextRequest, user: any) => {
   try {
-    // Only admins can create doctor profiles
-    if (user.role !== 'admin') {
+    // Admins can create doctor profiles for any user, doctors can create their own profile
+    if (user.role !== 'admin' && user.role !== 'doctor') {
       return NextResponse.json(
-        { error: 'Only administrators can create doctor profiles' },
+        { error: 'Only administrators or doctors can create doctor profiles' },
         { status: 403 }
       );
     }
@@ -91,34 +91,58 @@ export const POST = withAuth(async (request: NextRequest, user: any) => {
       bio,
     } = body;
 
-    // Validate required fields
-    if (!userId || !licenseNumber || !specialization || specialization.length === 0) {
-      return NextResponse.json(
-        { error: 'userId, licenseNumber, and specialization are required' },
-        { status: 400 }
-      );
-    }
-
     await connectDB();
 
-    // Check if user exists and is a doctor
-    const targetUser = await User.findById(userId);
-    if (!targetUser) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      );
+    let targetUser;
+    
+    // If admin is creating, userId is required
+    if (user.role === 'admin') {
+      if (!userId) {
+        return NextResponse.json(
+          { error: 'userId is required when creating as admin' },
+          { status: 400 }
+        );
+      }
+      targetUser = await User.findById(userId);
+      if (!targetUser) {
+        return NextResponse.json(
+          { error: 'User not found' },
+          { status: 404 }
+        );
+      }
+      if (targetUser.role !== 'doctor') {
+        return NextResponse.json(
+          { error: 'User must have doctor role' },
+          { status: 400 }
+        );
+      }
+    } else {
+      // If doctor is creating their own profile, use their own userId
+      targetUser = await User.findOne({ uid: user.uid });
+      if (!targetUser) {
+        return NextResponse.json(
+          { error: 'User not found' },
+          { status: 404 }
+        );
+      }
+      if (targetUser.role !== 'doctor') {
+        return NextResponse.json(
+          { error: 'User must have doctor role' },
+          { status: 400 }
+        );
+      }
     }
 
-    if (targetUser.role !== 'doctor') {
+    // Validate required fields
+    if (!licenseNumber || !specialization || specialization.length === 0) {
       return NextResponse.json(
-        { error: 'User must have doctor role' },
+        { error: 'licenseNumber and specialization are required' },
         { status: 400 }
       );
     }
 
     // Check if doctor profile already exists
-    const existingDoctor = await Doctor.findOne({ userId });
+    const existingDoctor = await Doctor.findOne({ userId: targetUser._id });
     if (existingDoctor) {
       return NextResponse.json(
         { error: 'Doctor profile already exists for this user' },
@@ -141,7 +165,7 @@ export const POST = withAuth(async (request: NextRequest, user: any) => {
     // Create doctor profile
     const doctor = new Doctor({
       uid,
-      userId,
+      userId: targetUser._id,
       licenseNumber,
       specialization,
       experience: experience || 0,

@@ -118,13 +118,15 @@ export async function GET(request: NextRequest) {
     });
 
     // Redirect to frontend with token
-    const redirectUrl = new URL('/auth/success', process.env.NEXTAUTH_URL);
+    const baseUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    const redirectUrl = new URL('/auth/success', baseUrl);
     redirectUrl.searchParams.set('token', token);
     redirectUrl.searchParams.set('role', user.role);
 
-    return NextResponse.redirect(redirectUrl);
+    return NextResponse.redirect(redirectUrl.toString());
   } catch (error) {
     console.error('Google OAuth callback error:', error);
-    return NextResponse.redirect(`${process.env.NEXTAUTH_URL}/auth/error?error=oauth_callback_failed`);
+    const baseUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    return NextResponse.redirect(`${baseUrl}/auth/error?error=oauth_callback_failed`);
   }
 }

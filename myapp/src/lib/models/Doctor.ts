@@ -122,10 +122,7 @@ const DoctorSchema: Schema = new Schema({
 });
 
 // Index for efficient queries
-DoctorSchema.index({ userId: 1 });
-DoctorSchema.index({ uid: 1 });
 DoctorSchema.index({ specialization: 1 });
-DoctorSchema.index({ licenseNumber: 1 });
 DoctorSchema.index({ rating: -1 });
 
 export default mongoose.models.Doctor || mongoose.model<IDoctor>('Doctor', DoctorSchema);

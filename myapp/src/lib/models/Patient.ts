@@ -26,6 +26,13 @@ export interface IPatient extends Document {
   weight?: number; // in kg
   smokingStatus?: 'never' | 'former' | 'current';
   alcoholConsumption?: 'none' | 'occasional' | 'moderate' | 'heavy';
+  blockchainRecord?: {
+    blockHash: string;
+    storedAt: Date;
+    verifiedAt?: Date;
+    isVerified: boolean;
+    blockchainId?: string;
+  };
   createdAt: Date;
   updatedAt: Date;
 }
@@ -82,6 +89,16 @@ const PatientSchema: Schema = new Schema({
   alcoholConsumption: {
     type: String,
     enum: ['none', 'occasional', 'moderate', 'heavy']
+  },
+  blockchainRecord: {
+    blockHash: String,
+    storedAt: Date,
+    verifiedAt: Date,
+    isVerified: {
+      type: Boolean,
+      default: false
+    },
+    blockchainId: String
   }
 }, {
   timestamps: true,
@@ -89,7 +106,6 @@ const PatientSchema: Schema = new Schema({
 });
 
 // Index for efficient queries
-PatientSchema.index({ userId: 1 });
-PatientSchema.index({ uid: 1 });
+// uid and userId already have unique indexes
 
 export default mongoose.models.Patient || mongoose.model<IPatient>('Patient', PatientSchema);

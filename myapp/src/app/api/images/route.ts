@@ -25,10 +25,15 @@ export const GET = withAuth(async (request: NextRequest, user: any) => {
 
     // Filter based on user role
     if (user.role === 'patient') {
-      // Find patient's profile
-      const patient = await Patient.findOne({ 'userId.uid': user.uid });
-      if (patient) {
-        query.patientId = patient._id;
+      // Find patient's profile by finding user first, then patient
+      const patientUser = await User.findOne({ uid: user.uid });
+      if (patientUser) {
+        const patient = await Patient.findOne({ userId: patientUser._id });
+        if (patient) {
+          query.patientId = patient._id;
+        } else {
+          return NextResponse.json({ images: [], pagination: { page: 1, limit, total: 0, pages: 0 } });
+        }
       } else {
         return NextResponse.json({ images: [], pagination: { page: 1, limit, total: 0, pages: 0 } });
       }

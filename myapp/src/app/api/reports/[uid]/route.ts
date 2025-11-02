@@ -3,8 +3,9 @@ import connectDB from '@/lib/db';
 import { Report, Patient, Doctor, User } from '@/lib/models';
 import { withAuth } from '@/lib/auth';
 
-export const GET = withAuth(async (request: NextRequest, user: any, { params }: { params: { uid: string } }) => {
+export const GET = withAuth(async (request: NextRequest, user: any, context?: any) => {
   try {
+    const params = context?.params instanceof Promise ? await context.params : context?.params || {};
     const { uid } = params;
     const { searchParams } = new URL(request.url);
     const download = searchParams.get('download') === 'true';
@@ -67,8 +68,9 @@ export const GET = withAuth(async (request: NextRequest, user: any, { params }: 
   }
 });
 
-export const PUT = withAuth(async (request: NextRequest, user: any, { params }: { params: { uid: string } }) => {
+export const PUT = withAuth(async (request: NextRequest, user: any, context?: any) => {
   try {
+    const params = context?.params instanceof Promise ? await context.params : context?.params || {};
     const { uid } = params;
 
     await connectDB();
@@ -83,7 +85,8 @@ export const PUT = withAuth(async (request: NextRequest, user: any, { params }: 
     }
 
     // Check access permissions - only doctors and admins can update reports
-    const doctorUser = report.doctorId ? await User.findById((report.doctorId as any).userId) : null;
+    const populatedDoctor = report.doctorId ? await Doctor.findById(report.doctorId) : null;
+    const doctorUser = populatedDoctor ? await User.findById(populatedDoctor.userId) : null;
     const isDoctor = user.role === 'doctor' && doctorUser && user.uid === doctorUser.uid;
     const isAdmin = user.role === 'admin';
 
@@ -196,7 +199,7 @@ export const PUT = withAuth(async (request: NextRequest, user: any, { params }: 
   }
 });
 
-export const DELETE = withAuth(async (request: NextRequest, user: any, { params }: { params: { uid: string } }) => {
+export const DELETE = withAuth(async (request: NextRequest, user: any, context?: any) => {
   try {
     // Only admins can delete reports
     if (user.role !== 'admin') {
@@ -206,6 +209,7 @@ export const DELETE = withAuth(async (request: NextRequest, user: any, { params 
       );
     }
 
+    const params = context?.params instanceof Promise ? await context.params : context?.params || {};
     const { uid } = params;
 
     await connectDB();

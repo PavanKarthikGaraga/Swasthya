@@ -47,7 +47,7 @@ export function CTA() {
             
             {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-8">
-              <Link href="/signup">
+              <Link href="/auth/signup">
                 <Button
                   size="lg"
                   className="w-full sm:w-auto px-10 py-7 text-lg font-medium bg-foreground text-background hover:bg-foreground/90 rounded-sm"

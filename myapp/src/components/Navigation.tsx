@@ -1,6 +1,6 @@
 "use client";
 
-import { motion, useScroll, useTransform } from "framer-motion";
+import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ const navLinks = [
 
 export function Navigation() {
   const [isScrolled, setIsScrolled] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { scrollY } = useScroll();
   const opacity = useTransform(scrollY, [0, 50], [0, 1]);
 
@@ -22,6 +23,15 @@ export function Navigation() {
       setIsScrolled(latest > 50);
     });
   }, [scrollY]);
+
+  useEffect(() => {
+    // Close mobile menu on scroll
+    if (isMobileMenuOpen) {
+      const handleScroll = () => setIsMobileMenuOpen(false);
+      window.addEventListener('scroll', handleScroll);
+      return () => window.removeEventListener('scroll', handleScroll);
+    }
+  }, [isMobileMenuOpen]);
 
   return (
     <>
@@ -85,12 +95,12 @@ export function Navigation() {
               transition={{ delay: 0.3 }}
               className="hidden md:flex items-center gap-3"
             >
-                <Link href="/login">
+                <Link href="/auth/login">
                 <Button variant="ghost" size="sm" className="font-medium text-sm">
                     Sign In
                   </Button>
                 </Link>
-                <Link href="/signup">
+                <Link href="/auth/signup">
                 <Button
                   size="sm"
                   className="font-medium bg-foreground text-background hover:bg-foreground/90 rounded-sm px-6"
@@ -101,18 +111,69 @@ export function Navigation() {
             </motion.div>
 
             {/* Mobile Menu */}
-            <button className="lg:hidden p-2" aria-label="Menu">
-              <div className="space-y-1.5">
-                <motion.div
-                  className="w-5 h-0.5 bg-foreground"
-                  animate={isScrolled ? { width: 20 } : { width: 20 }}
-                />
-                <motion.div
-                  className="w-5 h-0.5 bg-foreground"
-                  animate={isScrolled ? { width: 20 } : { width: 16 }}
-                />
-              </div>
-            </button>
+            <div className="lg:hidden">
+              <button 
+                className="p-2 relative z-50" 
+                aria-label="Menu"
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              >
+                <div className="space-y-1.5">
+                  <motion.div
+                    className="w-5 h-0.5 bg-foreground"
+                    animate={isMobileMenuOpen ? { rotate: 45, y: 6 } : { rotate: 0, y: 0 }}
+                    transition={{ duration: 0.2 }}
+                  />
+                  <motion.div
+                    className="w-5 h-0.5 bg-foreground"
+                    animate={isMobileMenuOpen ? { opacity: 0 } : { opacity: 1 }}
+                    transition={{ duration: 0.2 }}
+                  />
+                  <motion.div
+                    className="w-5 h-0.5 bg-foreground"
+                    animate={isMobileMenuOpen ? { rotate: -45, y: -6 } : { rotate: 0, y: 0 }}
+                    transition={{ duration: 0.2 }}
+                  />
+                </div>
+              </button>
+
+              {/* Mobile Menu Dropdown */}
+              <AnimatePresence>
+                {isMobileMenuOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{ duration: 0.2 }}
+                    className="fixed top-24 left-0 right-0 bg-card border-b border-border shadow-lg z-40"
+                  >
+                    <div className="container mx-auto px-6 py-6 space-y-4">
+                      {navLinks.map((link) => (
+                        <Link
+                          key={link.href}
+                          href={link.href}
+                          className="block py-2 text-muted-foreground hover:text-foreground transition-colors"
+                          onClick={() => setIsMobileMenuOpen(false)}
+                        >
+                          {link.label}
+                        </Link>
+                      ))}
+                      <div className="pt-4 border-t border-border space-y-3">
+                        <Link href="/auth/login" onClick={() => setIsMobileMenuOpen(false)}>
+                          <Button variant="ghost" className="w-full justify-start font-medium">
+                            Sign In
+                          </Button>
+                        </Link>
+                        <Link href="/auth/signup" onClick={() => setIsMobileMenuOpen(false)}>
+                          <Button className="w-full bg-foreground text-background hover:bg-foreground/90 font-medium">
+                            Get Access
+                          </Button>
+                        </Link>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
         </nav>
       </header>

@@ -11,7 +11,8 @@ export interface IReport extends Document {
   fileName: string;
   fileType: string; // MIME type
   fileSize: number; // in bytes
-  fileData: Buffer; // Binary data for PDF storage
+  gridFSId?: string; // GridFS file ID for large file storage
+  fileData?: Buffer; // Fallback for small files (deprecated)
   metadata?: {
     testType?: string;
     labName?: string;
@@ -27,6 +28,15 @@ export interface IReport extends Document {
     severity: 'low' | 'medium' | 'high' | 'critical';
     confidence: number; // 0-100
     analyzedAt: Date;
+    findings?: string[];
+    conditions?: string[];
+  };
+  blockchainRecord?: {
+    blockHash: string;
+    storedAt: Date;
+    verifiedAt?: Date;
+    isVerified: boolean;
+    blockchainId?: string;
   };
   status: 'draft' | 'final' | 'archived';
   isConfidential: boolean;
@@ -77,9 +87,13 @@ const ReportSchema: Schema = new Schema({
     required: true,
     min: 0
   },
+  gridFSId: {
+    type: String,
+    sparse: true // Allow null values
+  },
   fileData: {
     type: Buffer,
-    required: true
+    required: false // Made optional for migration
   },
   metadata: {
     testType: String,
@@ -102,7 +116,19 @@ const ReportSchema: Schema = new Schema({
       min: 0,
       max: 100
     },
-    analyzedAt: Date
+    analyzedAt: Date,
+    findings: [String],
+    conditions: [String]
+  },
+  blockchainRecord: {
+    blockHash: String,
+    storedAt: Date,
+    verifiedAt: Date,
+    isVerified: {
+      type: Boolean,
+      default: false
+    },
+    blockchainId: String
   },
   status: {
     type: String,
@@ -122,7 +148,6 @@ const ReportSchema: Schema = new Schema({
 // Index for efficient queries
 ReportSchema.index({ patientId: 1, createdAt: -1 });
 ReportSchema.index({ doctorId: 1, createdAt: -1 });
-ReportSchema.index({ uid: 1 });
 ReportSchema.index({ type: 1 });
 ReportSchema.index({ status: 1 });
 ReportSchema.index({ tags: 1 });

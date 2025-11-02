@@ -3,8 +3,9 @@ import connectDB from '@/lib/db';
 import { Image, Patient, User } from '@/lib/models';
 import { withAuth } from '@/lib/auth';
 
-export const GET = withAuth(async (request: NextRequest, user: any, { params }: { params: { uid: string } }) => {
+export const GET = withAuth(async (request: NextRequest, user: any, context?: any) => {
   try {
+    const params = context?.params instanceof Promise ? await context.params : context?.params || {};
     const { uid } = params;
     const { searchParams } = new URL(request.url);
     const download = searchParams.get('download') === 'true';
@@ -21,8 +22,9 @@ export const GET = withAuth(async (request: NextRequest, user: any, { params }: 
       );
     }
 
-    // Check access permissions
-    const patientUser = await User.findById((image.patientId as any).userId);
+    // Check access permissions - populate first to get userId
+    const populatedPatient = await Patient.findById(image.patientId);
+    const patientUser = populatedPatient ? await User.findById(populatedPatient.userId) : null;
     const isPatient = user.role === 'patient' && user.uid === patientUser?.uid;
     const isDoctor = user.role === 'doctor';
     const isAdmin = user.role === 'admin';
@@ -192,7 +194,7 @@ export const PUT = withAuth(async (request: NextRequest, user: any, { params }: 
   }
 });
 
-export const DELETE = withAuth(async (request: NextRequest, user: any, { params }: { params: { uid: string } }) => {
+export const DELETE = withAuth(async (request: NextRequest, user: any, context?: any) => {
   try {
     // Only admins can delete images
     if (user.role !== 'admin') {
@@ -202,6 +204,7 @@ export const DELETE = withAuth(async (request: NextRequest, user: any, { params 
       );
     }
 
+    const params = context?.params instanceof Promise ? await context.params : context?.params || {};
     const { uid } = params;
 
     await connectDB();

@@ -57,7 +57,7 @@ export function Hero() {
               transition={{ duration: 0.8, delay: 0.5 }}
               className="flex flex-col sm:flex-row items-center justify-center gap-4"
             >
-              <Link href="/signup">
+              <Link href="/auth/signup">
                 <Button
                   size="lg"
                   className="w-full sm:w-auto px-10 py-7 text-lg font-semibold bg-foreground text-background hover:bg-foreground/90 rounded-full shadow-lg hover:shadow-xl transition-all"

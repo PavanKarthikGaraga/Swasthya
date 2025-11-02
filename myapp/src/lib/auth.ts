@@ -107,14 +107,24 @@ export function handleAuthError(error: unknown): NextResponse {
 }
 
 // Middleware function for protecting API routes
-export async function withAuth(
+export function withAuth(
   handler: (request: NextRequest, user: any, ...args: any[]) => Promise<NextResponse> | NextResponse,
   allowedRoles?: string[]
 ) {
-  return async (request: NextRequest, ...args: any[]) => {
+  return async (request: NextRequest, context?: any, ...restArgs: any[]) => {
     try {
       const user = await requireAuth(request, allowedRoles);
-      return await handler(request, user, ...args);
+      
+      // Handle Next.js 15 params Promise
+      let processedContext = context;
+      if (context && typeof context === 'object' && 'params' in context) {
+        const params = context.params;
+        if (params instanceof Promise) {
+          processedContext = { ...context, params: await params };
+        }
+      }
+      
+      return await handler(request, user, processedContext, ...restArgs);
     } catch (error) {
       return handleAuthError(error);
     }

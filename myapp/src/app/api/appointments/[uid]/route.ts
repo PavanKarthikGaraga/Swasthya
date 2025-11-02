@@ -24,18 +24,21 @@ export const GET = withAuth(async (request: NextRequest, user: any, { params }: 
       );
     }
 
-    // Check access permissions
-    const patientUser = (appointment.patientId as any).userId;
-    const doctorUser = (appointment.doctorId as any).userId;
+    // Check access permissions - populate first to get userId
+    const populatedPatient = await Patient.findById(appointment.patientId);
+    const populatedDoctor = await Doctor.findById(appointment.doctorId);
+    
+    const patientUser = populatedPatient ? await User.findById(populatedPatient.userId) : null;
+    const doctorUser = populatedDoctor ? await User.findById(populatedDoctor.userId) : null;
 
-    if (user.role === 'patient' && user.uid !== patientUser.uid) {
+    if (user.role === 'patient' && (!patientUser || user.uid !== patientUser.uid)) {
       return NextResponse.json(
         { error: 'Access denied' },
         { status: 403 }
       );
     }
 
-    if (user.role === 'doctor' && user.uid !== doctorUser.uid) {
+    if (user.role === 'doctor' && (!doctorUser || user.uid !== doctorUser.uid)) {
       return NextResponse.json(
         { error: 'Access denied' },
         { status: 403 }
@@ -67,9 +70,12 @@ export const PUT = withAuth(async (request: NextRequest, user: any, { params }: 
       );
     }
 
-    // Check access permissions
-    const patientUser = await User.findById((appointment.patientId as any).userId);
-    const doctorUser = await User.findById((appointment.doctorId as any).userId);
+    // Check access permissions - populate first to get userId
+    const populatedPatient = await Patient.findById(appointment.patientId);
+    const populatedDoctor = await Doctor.findById(appointment.doctorId);
+    
+    const patientUser = populatedPatient ? await User.findById(populatedPatient.userId) : null;
+    const doctorUser = populatedDoctor ? await User.findById(populatedDoctor.userId) : null;
 
     const isPatient = user.role === 'patient' && user.uid === patientUser?.uid;
     const isDoctor = user.role === 'doctor' && user.uid === doctorUser?.uid;
@@ -154,7 +160,7 @@ export const PUT = withAuth(async (request: NextRequest, user: any, { params }: 
         );
       }
 
-      const dayOfWeek = newDate.toLocaleLowerCase('en-US', { weekday: 'long' });
+      const dayOfWeek = newDate.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
       const timeString = newDate.toTimeString().substring(0, 5);
 
       const isAvailable = doctor.availability.some((slot: any) => {
@@ -208,7 +214,7 @@ export const PUT = withAuth(async (request: NextRequest, user: any, { params }: 
   }
 });
 
-export const DELETE = withAuth(async (request: NextRequest, user: any, { params }: { params: { uid: string } }) => {
+export const DELETE = withAuth(async (request: NextRequest, user: any, context?: any) => {
   try {
     // Only admins can delete appointments
     if (user.role !== 'admin') {
@@ -218,6 +224,7 @@ export const DELETE = withAuth(async (request: NextRequest, user: any, { params 
       );
     }
 
+    const params = context?.params instanceof Promise ? await context.params : context?.params || {};
     const { uid } = params;
 
     await connectDB();

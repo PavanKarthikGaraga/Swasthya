@@ -30,8 +30,9 @@ export const GET = withAuth(async (request: NextRequest, user: any, { params }: 
   }
 });
 
-export const PUT = withAuth(async (request: NextRequest, user: any, { params }: { params: { uid: string } }) => {
+export const PUT = withAuth(async (request: NextRequest, user: any, context?: any) => {
   try {
+    const params = context?.params instanceof Promise ? await context.params : context?.params || {};
     const { uid } = params;
 
     await connectDB();
@@ -46,12 +47,14 @@ export const PUT = withAuth(async (request: NextRequest, user: any, { params }: 
     }
 
     // Check access permissions - doctors can update their own profile, admins can update any
-    const doctorUser = await User.findById(doctor.userId);
-    if (user.role === 'doctor' && user.uid !== doctorUser?.uid) {
-      return NextResponse.json(
-        { error: 'Access denied' },
-        { status: 403 }
-      );
+    if (user.role === 'doctor') {
+      const doctorUser = await User.findById(doctor.userId);
+      if (!doctorUser || user.uid !== doctorUser.uid) {
+        return NextResponse.json(
+          { error: 'Access denied' },
+          { status: 403 }
+        );
+      }
     }
 
     const body = await request.json();
@@ -127,7 +130,7 @@ export const PUT = withAuth(async (request: NextRequest, user: any, { params }: 
   }
 });
 
-export const DELETE = withAuth(async (request: NextRequest, user: any, { params }: { params: { uid: string } }) => {
+export const DELETE = withAuth(async (request: NextRequest, user: any, context?: any) => {
   try {
     // Only admins can delete doctor profiles
     if (user.role !== 'admin') {
@@ -137,6 +140,7 @@ export const DELETE = withAuth(async (request: NextRequest, user: any, { params 
       );
     }
 
+    const params = context?.params instanceof Promise ? await context.params : context?.params || {};
     const { uid } = params;
 
     await connectDB();

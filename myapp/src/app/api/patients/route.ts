@@ -30,9 +30,9 @@ export const GET = withAuth(async (request: NextRequest, user: any) => {
 
     // Patients can only see their own profile, doctors and admins can see all
     if (user.role === 'patient') {
-      const patientUser = await User.findOne({ uid: user.uid });
-      if (patientUser) {
-        query.userId = patientUser._id;
+      const currentUser = await User.findOne({ uid: user.uid });
+      if (currentUser) {
+        query.userId = currentUser._id;
       } else {
         return NextResponse.json({ patients: [], pagination: { page: 1, limit, total: 0, pages: 0 } });
       }

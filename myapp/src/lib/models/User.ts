@@ -100,9 +100,6 @@ const UserSchema: Schema = new Schema({
 });
 
 // Index for efficient queries
-UserSchema.index({ uid: 1 });
-UserSchema.index({ email: 1 });
 UserSchema.index({ role: 1 });
-UserSchema.index({ googleId: 1 });
 
 export default mongoose.models.User || mongoose.model<IUser>('User', UserSchema);

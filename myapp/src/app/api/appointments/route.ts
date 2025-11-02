@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/db';
 import { Appointment, Patient, Doctor, User } from '@/lib/models';
 import { withAuth } from '@/lib/auth';
+import { aiMLClient } from '@/lib/ai-ml-client';
 
 export const GET = withAuth(async (request: NextRequest, user: any) => {
   try {
@@ -29,18 +30,28 @@ export const GET = withAuth(async (request: NextRequest, user: any) => {
 
     // Filter based on user role
     if (user.role === 'patient') {
-      // Find patient's profile
-      const patient = await Patient.findOne({ 'userId.uid': user.uid });
-      if (patient) {
-        query.patientId = patient._id;
+      // Find patient's profile by finding user first, then patient
+      const patientUser = await User.findOne({ uid: user.uid });
+      if (patientUser) {
+        const patient = await Patient.findOne({ userId: patientUser._id });
+        if (patient) {
+          query.patientId = patient._id;
+        } else {
+          return NextResponse.json({ appointments: [], pagination: { page: 1, limit, total: 0, pages: 0 } });
+        }
       } else {
         return NextResponse.json({ appointments: [], pagination: { page: 1, limit, total: 0, pages: 0 } });
       }
     } else if (user.role === 'doctor') {
-      // Find doctor's profile
-      const doctor = await Doctor.findOne({ 'userId.uid': user.uid });
-      if (doctor) {
-        query.doctorId = doctor._id;
+      // Find doctor's profile by finding user first, then doctor
+      const doctorUser = await User.findOne({ uid: user.uid });
+      if (doctorUser) {
+        const doctor = await Doctor.findOne({ userId: doctorUser._id });
+        if (doctor) {
+          query.doctorId = doctor._id;
+        } else {
+          return NextResponse.json({ appointments: [], pagination: { page: 1, limit, total: 0, pages: 0 } });
+        }
       } else {
         return NextResponse.json({ appointments: [], pagination: { page: 1, limit, total: 0, pages: 0 } });
       }
@@ -109,8 +120,16 @@ export const POST = withAuth(async (request: NextRequest, user: any) => {
 
     await connectDB();
 
-    // Find patient profile
-    const patient = await Patient.findOne({ 'userId.uid': user.uid });
+    // Find patient profile by finding user first, then patient
+    const patientUser = await User.findOne({ uid: user.uid });
+    if (!patientUser) {
+      return NextResponse.json(
+        { error: 'User not found' },
+        { status: 404 }
+      );
+    }
+    
+    const patient = await Patient.findOne({ userId: patientUser._id });
     if (!patient) {
       return NextResponse.json(
         { error: 'Patient profile not found. Please complete your profile first.' },
@@ -146,8 +165,15 @@ export const POST = withAuth(async (request: NextRequest, user: any) => {
     }
 
     // Check doctor's availability for this time slot
-    const dayOfWeek = appointmentDateTime.toLocaleLowerCase('en-US', { weekday: 'long' });
-    const timeString = appointmentDateTime.toTimeString().substring(0, 5); // HH:MM format
+    // Use getDay() to get day of week (0 = Sunday, 1 = Monday, ..., 6 = Saturday)
+    const dayIndex = appointmentDateTime.getDay();
+    const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const dayOfWeek = dayNames[dayIndex];
+    
+    // Get time in HH:MM format using local time
+    const hours = appointmentDateTime.getHours().toString().padStart(2, '0');
+    const minutes = appointmentDateTime.getMinutes().toString().padStart(2, '0');
+    const timeString = `${hours}:${minutes}`;
 
     const isAvailable = doctor.availability.some((slot: any) => {
       if (slot.dayOfWeek !== dayOfWeek || !slot.isAvailable) return false;
@@ -155,8 +181,14 @@ export const POST = withAuth(async (request: NextRequest, user: any) => {
       const startTime = slot.startTime;
       const endTime = slot.endTime;
 
-      // Check if appointment time falls within available slot
-      return timeString >= startTime && timeString <= endTime;
+      // Check if appointment start time falls within available slot
+      // Also check that appointment doesn't extend beyond slot end time
+      const appointmentEndTime = new Date(appointmentDateTime.getTime() + duration * 60000);
+      const endHours = appointmentEndTime.getHours().toString().padStart(2, '0');
+      const endMinutes = appointmentEndTime.getMinutes().toString().padStart(2, '0');
+      const appointmentEndTimeString = `${endHours}:${endMinutes}`;
+
+      return timeString >= startTime && timeString < endTime && appointmentEndTimeString <= endTime;
     });
 
     if (!isAvailable) {
@@ -226,9 +258,28 @@ export const POST = withAuth(async (request: NextRequest, user: any) => {
     await appointment.populate('patientId.userId', 'firstName lastName email');
     await appointment.populate('doctorId.userId', 'firstName lastName email specialization');
 
+    // Optional AI symptom analysis if symptoms are provided
+    let aiAnalysis = null;
+    if (symptoms && symptoms.length > 0) {
+      try {
+        const isAIServiceAvailable = await aiMLClient.isServiceAvailable();
+        if (isAIServiceAvailable) {
+          aiAnalysis = await aiMLClient.analyzeSymptoms(symptoms, reason);
+        }
+      } catch (aiError) {
+        console.warn('AI analysis failed during appointment booking, continuing without AI insights:', aiError.message);
+        // Don't fail the appointment booking if AI analysis fails
+      }
+    }
+
     return NextResponse.json({
       message: 'Appointment booked successfully',
       appointment,
+      aiInsights: aiAnalysis ? {
+        analysis: aiAnalysis,
+        disclaimer: 'AI analysis is for preliminary reference only. Please consult your doctor for proper diagnosis.',
+        timestamp: new Date().toISOString()
+      } : null,
     });
   } catch (error) {
     console.error('Create appointment error:', error);

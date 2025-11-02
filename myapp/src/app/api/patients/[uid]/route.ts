@@ -3,9 +3,12 @@ import connectDB from '@/lib/db';
 import { Patient, User } from '@/lib/models';
 import { withAuth } from '@/lib/auth';
 
-export const GET = withAuth(async (request: NextRequest, user: any, { params }: { params: { uid: string } }) => {
+export const GET = withAuth(async (request: NextRequest, user: any, context?: { params: { uid: string } }) => {
   try {
-    const { uid } = params;
+    const { uid } = context?.params || {} as { uid: string };
+    if (!uid) {
+      return NextResponse.json({ error: 'UID is required' }, { status: 400 });
+    }
 
     await connectDB();
 
@@ -39,9 +42,12 @@ export const GET = withAuth(async (request: NextRequest, user: any, { params }: 
   }
 });
 
-export const PUT = withAuth(async (request: NextRequest, user: any, { params }: { params: { uid: string } }) => {
+export const PUT = withAuth(async (request: NextRequest, user: any, context?: { params: { uid: string } }) => {
   try {
-    const { uid } = params;
+    const { uid } = context?.params || {} as { uid: string };
+    if (!uid) {
+      return NextResponse.json({ error: 'UID is required' }, { status: 400 });
+    }
 
     await connectDB();
 
@@ -120,7 +126,7 @@ export const PUT = withAuth(async (request: NextRequest, user: any, { params }: 
   }
 });
 
-export const DELETE = withAuth(async (request: NextRequest, user: any, { params }: { params: { uid: string } }) => {
+export const DELETE = withAuth(async (request: NextRequest, user: any, context?: any) => {
   try {
     // Only admins can delete patient profiles
     if (user.role !== 'admin') {
@@ -130,7 +136,11 @@ export const DELETE = withAuth(async (request: NextRequest, user: any, { params 
       );
     }
 
+    const params = context?.params instanceof Promise ? await context.params : context?.params || {};
     const { uid } = params;
+    if (!uid) {
+      return NextResponse.json({ error: 'UID is required' }, { status: 400 });
+    }
 
     await connectDB();
 

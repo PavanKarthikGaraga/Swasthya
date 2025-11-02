@@ -103,7 +103,6 @@ const AppointmentSchema: Schema = new Schema({
 // Index for efficient queries
 AppointmentSchema.index({ patientId: 1, appointmentDate: -1 });
 AppointmentSchema.index({ doctorId: 1, appointmentDate: -1 });
-AppointmentSchema.index({ uid: 1 });
 AppointmentSchema.index({ status: 1 });
 AppointmentSchema.index({ appointmentDate: 1 });
 AppointmentSchema.index({ type: 1 });

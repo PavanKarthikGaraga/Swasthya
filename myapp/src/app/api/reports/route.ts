@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import connectDB from '@/lib/db';
+import { connectDB } from '@/lib/db';
 import { Report, Patient, Doctor, Appointment, User } from '@/lib/models';
 import { withAuth } from '@/lib/auth';
+import { aiMLClient } from '@/lib/ai-ml-client';
+import { uploadToGridFS, isGridFSAvailable } from '@/lib/gridfs';
+import mongoose from 'mongoose';
 
 export const GET = withAuth(async (request: NextRequest, user: any) => {
   try {
@@ -33,18 +36,28 @@ export const GET = withAuth(async (request: NextRequest, user: any) => {
 
     // Filter based on user role
     if (user.role === 'patient') {
-      // Find patient's profile
-      const patient = await Patient.findOne({ 'userId.uid': user.uid });
-      if (patient) {
-        query.patientId = patient._id;
+      // Find patient's profile by finding user first, then patient
+      const patientUser = await User.findOne({ uid: user.uid });
+      if (patientUser) {
+        const patient = await Patient.findOne({ userId: patientUser._id });
+        if (patient) {
+          query.patientId = patient._id;
+        } else {
+          return NextResponse.json({ reports: [], pagination: { page: 1, limit, total: 0, pages: 0 } });
+        }
       } else {
         return NextResponse.json({ reports: [], pagination: { page: 1, limit, total: 0, pages: 0 } });
       }
     } else if (user.role === 'doctor') {
-      // Find doctor's profile
-      const doctor = await Doctor.findOne({ 'userId.uid': user.uid });
-      if (doctor) {
-        query.doctorId = doctor._id;
+      // Find doctor's profile by finding user first, then doctor
+      const doctorUser = await User.findOne({ uid: user.uid });
+      if (doctorUser) {
+        const doctor = await Doctor.findOne({ userId: doctorUser._id });
+        if (doctor) {
+          query.doctorId = doctor._id;
+        } else {
+          return NextResponse.json({ reports: [], pagination: { page: 1, limit, total: 0, pages: 0 } });
+        }
       } else {
         return NextResponse.json({ reports: [], pagination: { page: 1, limit, total: 0, pages: 0 } });
       }
@@ -112,7 +125,15 @@ export const POST = withAuth(async (request: NextRequest, user: any) => {
       );
     }
 
-    await connectDB();
+    const { connection, bucket } = await connectDB();
+
+    // Check if GridFS is available
+    if (!isGridFSAvailable(bucket)) {
+      return NextResponse.json(
+        { error: 'File storage service is currently unavailable' },
+        { status: 503 }
+      );
+    }
 
     // Find patient
     const patient = await Patient.findOne({ uid: patientId });
@@ -138,10 +159,18 @@ export const POST = withAuth(async (request: NextRequest, user: any) => {
     // Find doctor profile if user is a doctor
     let doctor = null;
     if (user.role === 'doctor') {
-      doctor = await Doctor.findOne({ 'userId.uid': user.uid });
-      if (!doctor) {
+      const doctorUser = await User.findOne({ uid: user.uid });
+      if (doctorUser) {
+        doctor = await Doctor.findOne({ userId: doctorUser._id });
+        if (!doctor) {
+          return NextResponse.json(
+            { error: 'Doctor profile not found' },
+            { status: 404 }
+          );
+        }
+      } else {
         return NextResponse.json(
-          { error: 'Doctor profile not found' },
+          { error: 'User not found' },
           { status: 404 }
         );
       }
@@ -200,6 +229,21 @@ export const POST = withAuth(async (request: NextRequest, user: any) => {
       );
     }
 
+    // Upload file to GridFS
+    const gridFSFileId = await uploadToGridFS(
+      connection,
+      bucket!,
+      fileBuffer,
+      file.name,
+      file.type,
+      {
+        patientId: patient.uid,
+        uploadedBy: user.uid,
+        reportType: type,
+        ...parsedMetadata
+      }
+    );
+
     // Generate unique UID
     const uid = `report_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
@@ -215,7 +259,7 @@ export const POST = withAuth(async (request: NextRequest, user: any) => {
       fileName: file.name,
       fileType: file.type,
       fileSize: file.size,
-      fileData: fileBuffer,
+      gridFSId: gridFSFileId.toString(), // Store GridFS file ID instead of file data
       metadata: parsedMetadata,
       aiAnalysis: parsedAiAnalysis,
       status: 'final',
@@ -223,6 +267,88 @@ export const POST = withAuth(async (request: NextRequest, user: any) => {
     });
 
     await report.save();
+
+    // Perform AI analysis if applicable
+    let aiAnalysisResult = parsedAiAnalysis; // Start with any manually provided analysis
+
+    try {
+      const isAIServiceAvailable = await aiMLClient.isServiceAvailable();
+      if (isAIServiceAvailable) {
+        // AI analysis for imaging reports
+        if (type === 'imaging' && file.type.startsWith('image/')) {
+          try {
+            // Use the file buffer we already have for analysis
+            const imageBase64 = fileBuffer.toString('base64');
+            const imageAnalysis = await aiMLClient.analyzeImage({
+              imageBase64,
+              patientId: patient.uid
+            });
+
+            aiAnalysisResult = {
+              summary: imageAnalysis.diagnosis,
+              recommendations: imageAnalysis.recommendations,
+              severity: imageAnalysis.confidence > 80 ? 'high' :
+                       imageAnalysis.confidence > 60 ? 'medium' : 'low',
+              confidence: imageAnalysis.confidence,
+              analyzedAt: new Date(),
+              findings: imageAnalysis.findings,
+              conditions: imageAnalysis.conditions
+            };
+          } catch (imageAnalysisError) {
+            console.warn('AI image analysis failed for report:', imageAnalysisError.message);
+          }
+        }
+
+        // AI analysis for lab results or other text-based reports
+        else if (description || (metadata && metadata.interpretation)) {
+          try {
+            const textContent = [
+              description || '',
+              metadata?.interpretation || '',
+              metadata?.results ? JSON.stringify(metadata.results) : ''
+            ].filter(Boolean).join(' ');
+
+            if (textContent.length > 50) { // Only analyze if there's substantial text
+              const textAnalysis = await aiMLClient.analyzeSymptoms(
+                [], // No specific symptoms
+                `Medical report analysis: ${textContent}`
+              );
+
+              // Merge with existing analysis or create new
+              aiAnalysisResult = aiAnalysisResult ? {
+                ...aiAnalysisResult,
+                summary: aiAnalysisResult.summary || textAnalysis.analysis,
+                recommendations: [
+                  ...(aiAnalysisResult.recommendations || []),
+                  ...(textAnalysis.suggestions?.[0]?.recommendations || [])
+                ],
+                analyzedAt: new Date()
+              } : {
+                summary: textAnalysis.analysis,
+                recommendations: textAnalysis.suggestions?.[0]?.recommendations || [],
+                severity: 'medium',
+                confidence: textAnalysis.confidence,
+                analyzedAt: new Date()
+              };
+            }
+          } catch (textAnalysisError) {
+            console.warn('AI text analysis failed for report:', textAnalysisError.message);
+          }
+        }
+
+        // Update report with AI analysis if generated
+        if (aiAnalysisResult && JSON.stringify(aiAnalysisResult) !== JSON.stringify(parsedAiAnalysis)) {
+          await Report.findByIdAndUpdate(report._id, {
+            aiAnalysis: aiAnalysisResult,
+            updatedAt: new Date()
+          });
+          report.aiAnalysis = aiAnalysisResult;
+        }
+      }
+    } catch (aiError) {
+      console.warn('AI analysis failed during report creation, continuing without AI insights:', aiError.message);
+      // Don't fail report creation if AI analysis fails
+    }
 
     // Populate data for response (excluding file data)
     await report.populate('patientId', 'uid userId');
@@ -237,6 +363,7 @@ export const POST = withAuth(async (request: NextRequest, user: any) => {
     return NextResponse.json({
       message: 'Report uploaded successfully',
       report: responseReport,
+      aiAnalysisPerformed: !!aiAnalysisResult && aiAnalysisResult.analyzedAt,
     });
   } catch (error) {
     console.error('Create report error:', error);

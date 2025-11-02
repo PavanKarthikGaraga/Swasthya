@@ -132,7 +132,6 @@ const ImageSchema: Schema = new Schema({
 // Index for efficient queries
 ImageSchema.index({ reportId: 1, order: 1 });
 ImageSchema.index({ patientId: 1, createdAt: -1 });
-ImageSchema.index({ uid: 1 });
 ImageSchema.index({ category: 1 });
 ImageSchema.index({ status: 1 });
 
