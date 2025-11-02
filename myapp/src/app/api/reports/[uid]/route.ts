@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import connectDB from '@/lib/db';
+import { connectDB } from '@/lib/db';
 import { Report, Patient, Doctor, User } from '@/lib/models';
 import { withAuth } from '@/lib/auth';
+import { downloadFromGridFS } from '@/lib/gridfs';
+import mongoose from 'mongoose';
 
 export const GET = withAuth(async (request: NextRequest, user: any, context?: any) => {
   try {
@@ -10,7 +12,7 @@ export const GET = withAuth(async (request: NextRequest, user: any, context?: an
     const { searchParams } = new URL(request.url);
     const download = searchParams.get('download') === 'true';
 
-    await connectDB();
+    const { connection, bucket } = await connectDB();
 
     // Find report by UID
     const report = await Report.findOne({ uid });
@@ -23,10 +25,25 @@ export const GET = withAuth(async (request: NextRequest, user: any, context?: an
     }
 
     // Check access permissions
-    const patientUser = await User.findById((report.patientId as any).userId);
-    const doctorUser = report.doctorId ? await User.findById((report.doctorId as any).userId) : null;
+    // Find patient and user
+    let patientUser = null;
+    if (report.patientId) {
+      const patient = await Patient.findById(report.patientId);
+      if (patient) {
+        patientUser = await User.findById(patient.userId);
+      }
+    }
+    
+    // Find doctor and user
+    let doctorUser = null;
+    if (report.doctorId) {
+      const doctor = await Doctor.findById(report.doctorId);
+      if (doctor) {
+        doctorUser = await User.findById(doctor.userId);
+      }
+    }
 
-    const isPatient = user.role === 'patient' && user.uid === patientUser?.uid;
+    const isPatient = user.role === 'patient' && patientUser && user.uid === patientUser.uid;
     const isDoctor = user.role === 'doctor' && doctorUser && user.uid === doctorUser.uid;
     const isAdmin = user.role === 'admin';
 
@@ -38,12 +55,37 @@ export const GET = withAuth(async (request: NextRequest, user: any, context?: an
     }
 
     if (download) {
+      // Get file data - either from GridFS or embedded fileData
+      let fileBuffer: Buffer;
+      
+      if (report.gridFSId) {
+        // Download from GridFS
+        try {
+          const gridFSId = new mongoose.Types.ObjectId(report.gridFSId);
+          fileBuffer = await downloadFromGridFS(bucket!, gridFSId);
+        } catch (error) {
+          console.error('Error downloading from GridFS:', error);
+          return NextResponse.json(
+            { error: 'Failed to download file from storage' },
+            { status: 500 }
+          );
+        }
+      } else if (report.fileData) {
+        // Fallback to embedded file data
+        fileBuffer = Buffer.from(report.fileData);
+      } else {
+        return NextResponse.json(
+          { error: 'File data not found' },
+          { status: 404 }
+        );
+      }
+
       // Return file for download
-      return new NextResponse(report.fileData, {
+      return new NextResponse(fileBuffer, {
         headers: {
-          'Content-Type': report.fileType,
+          'Content-Type': report.fileType || 'application/json',
           'Content-Disposition': `attachment; filename="${report.fileName}"`,
-          'Content-Length': report.fileSize.toString(),
+          'Content-Length': fileBuffer.length.toString(),
         },
       });
     } else {

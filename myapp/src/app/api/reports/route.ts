@@ -39,13 +39,18 @@ export const GET = withAuth(async (request: NextRequest, user: any) => {
       // Find patient's profile by finding user first, then patient
       const patientUser = await User.findOne({ uid: user.uid });
       if (patientUser) {
-        const patient = await Patient.findOne({ userId: patientUser._id });
-        if (patient) {
-          query.patientId = patient._id;
-        } else {
-          return NextResponse.json({ reports: [], pagination: { page: 1, limit, total: 0, pages: 0 } });
+        let patient = await Patient.findOne({ userId: patientUser._id });
+        // If patient doesn't exist, create one (for users who haven't completed profile but have generated reports)
+        if (!patient) {
+          patient = new Patient({
+            uid: `patient_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            userId: patientUser._id,
+          });
+          await patient.save();
         }
+        query.patientId = patient._id;
       } else {
+        // User not found - return empty but don't error
         return NextResponse.json({ reports: [], pagination: { page: 1, limit, total: 0, pages: 0 } });
       }
     } else if (user.role === 'doctor') {

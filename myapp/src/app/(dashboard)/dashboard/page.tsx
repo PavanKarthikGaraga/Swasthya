@@ -13,7 +13,6 @@ import {
   FaUser, 
   FaSignOutAlt, 
   FaFileAlt, 
-  FaImage, 
   FaUpload,
   FaRobot,
   FaSpinner,
@@ -26,7 +25,11 @@ import {
   FaMapMarkerAlt,
   FaHospital,
   FaPhone,
+  FaFileMedical,
+  FaDownload,
+  FaCalendar,
 } from "react-icons/fa";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, RadialBarChart, RadialBar } from "recharts";
 
 interface Report {
   id: string;
@@ -90,14 +93,15 @@ export default function DashboardPage() {
   const [nearbyHospitals, setNearbyHospitals] = useState<any[]>([]);
   const [loadingHospitals, setLoadingHospitals] = useState(false);
 
-  // AI Image Analysis State
-  const [selectedImage, setSelectedImage] = useState<File | null>(null);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [imageAnalysisResult, setImageAnalysisResult] = useState<DiagnosisResult | null>(null);
 
   // My Records State
   const [reports, setReports] = useState<Report[]>([]);
   const [isLoadingRecords, setIsLoadingRecords] = useState(false);
+
+  // Analysis Reports State
+  const [analysisReports, setAnalysisReports] = useState<any[]>([]);
+  const [isLoadingAnalysisReports, setIsLoadingAnalysisReports] = useState(false);
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
 
   // Load user data
   useEffect(() => {
@@ -192,6 +196,13 @@ export default function DashboardPage() {
     }
   }, [activeSection, user.uid]);
 
+  // Load analysis reports
+  useEffect(() => {
+    if (activeSection === "analysisReports" && user.uid) {
+      loadAnalysisReports();
+    }
+  }, [activeSection, user.uid]);
+
   const loadBlockchainRecords = async () => {
     if (!user.uid) return;
     
@@ -245,12 +256,6 @@ export default function DashboardPage() {
     }
   };
 
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setSelectedImage(e.target.files[0]);
-      setImageAnalysisResult(null);
-    }
-  };
 
   const handleUploadRecord = async () => {
     if (!selectedFile || !uploadMetadata.title) {
@@ -342,21 +347,41 @@ export default function DashboardPage() {
 
     setLoadingHospitals(true);
     try {
-      // Call backend API to search for hospitals
+      // Call backend API to search for hospitals with timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      
       const response = await fetch(
-        `/api/hospitals/nearby?latitude=${userLocation.lat}&longitude=${userLocation.lng}&condition=${encodeURIComponent(condition)}`
+        `/api/hospitals/nearby?latitude=${userLocation.lat}&longitude=${userLocation.lng}&condition=${encodeURIComponent(condition)}`,
+        { signal: controller.signal }
       );
+      
+      clearTimeout(timeoutId);
 
       if (response.ok) {
         const data = await response.json();
         setNearbyHospitals(data.hospitals || []);
+        
+        // If no hospitals found, try again with 'general' condition after a delay
+        if ((data.hospitals || []).length === 0 && condition !== 'general') {
+          setTimeout(async () => {
+            await fetchNearbyHospitals('general');
+          }, 1000);
+        }
       } else {
         console.error("Failed to fetch nearby hospitals:", response.status);
         setNearbyHospitals([]);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching nearby hospitals:", error);
-      setNearbyHospitals([]);
+      // On timeout or error, try once more with 'general' condition
+      if (condition !== 'general' && !error.message?.includes('aborted')) {
+        setTimeout(async () => {
+          await fetchNearbyHospitals('general');
+        }, 500);
+      } else {
+        setNearbyHospitals([]);
+      }
     } finally {
       setLoadingHospitals(false);
     }
@@ -414,51 +439,78 @@ export default function DashboardPage() {
     }
   };
 
-  const handleImageAnalysis = async () => {
-    if (!selectedImage) {
-      alert("Please select an image");
+
+  const loadAnalysisReports = async () => {
+    if (!user.uid) return;
+    
+    setIsLoadingAnalysisReports(true);
+    try {
+      const response = await fetch('/api/reports?type=ai_analysis', {
+        credentials: 'include', // Include cookies for authentication
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to load reports');
+      }
+      
+      const data = await response.json();
+      
+      if (data.reports) {
+        setAnalysisReports(data.reports);
+      } else {
+        setAnalysisReports([]);
+      }
+    } catch (error: any) {
+      console.error("Error loading analysis reports:", error);
+      // Show user-friendly error
+      if (error.message.includes('Access denied') || error.message.includes('401')) {
+        alert("Please log in again to view your reports");
+        router.push('/auth/login');
+      } else {
+        // Set empty array on error to show empty state
+        setAnalysisReports([]);
+      }
+    } finally {
+      setIsLoadingAnalysisReports(false);
+    }
+  };
+
+  const handleGenerateReport = async () => {
+    if (!diagnosisResult) {
+      alert("No diagnosis result to save");
       return;
     }
 
-    setIsAnalyzing(true);
-    setImageAnalysisResult(null);
-
+    setIsGeneratingReport(true);
     try {
-      // Convert image to base64
-      const reader = new FileReader();
-      reader.readAsDataURL(selectedImage);
-      
-      reader.onload = async () => {
-        const base64Image = reader.result?.toString().split(',')[1];
-        
-        const response = await fetch(`${ML_SERVICE_URL}/ai/analyze-image`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            imageBase64: base64Image,
-            patientId: user.uid
-          }),
-        });
+      const response = await fetch('/api/reports/ai-analysis', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          diagnosisResult,
+          symptoms: symptoms.split(',').map(s => s.trim()).filter(s => s),
+          description: symptomDescription,
+          title: `AI Analysis - ${new Date().toLocaleDateString()}`
+        }),
+      });
 
-        const data = await response.json();
+      const data = await response.json();
 
-        if (data.success) {
-          setImageAnalysisResult(data.analysis);
-        } else {
-          throw new Error(data.error || "Image analysis failed");
+      if (data.success) {
+        alert("✅ Report generated and saved successfully!");
+        // Reload reports if we're on the reports page
+        if (activeSection === "analysisReports") {
+          loadAnalysisReports();
         }
-        
-        setIsAnalyzing(false);
-      };
-
-      reader.onerror = () => {
-        setIsAnalyzing(false);
-        alert("Failed to read image file");
-      };
+      } else {
+        throw new Error(data.error || "Failed to generate report");
+      }
     } catch (error: any) {
-      console.error("Image analysis error:", error);
-      alert(`Image analysis failed: ${error.message}`);
-      setIsAnalyzing(false);
+      console.error("Generate report error:", error);
+      alert(`Failed to generate report: ${error.message}`);
+    } finally {
+      setIsGeneratingReport(false);
     }
   };
 
@@ -526,6 +578,18 @@ export default function DashboardPage() {
             <FaRobot />
               <span>AI Analysis</span>
             </button>
+
+            <button
+              onClick={() => setActiveSection("analysisReports")}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                activeSection === "analysisReports" 
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:bg-muted"
+              }`}
+            >
+            <FaFileMedical />
+              <span>Analysis Reports</span>
+            </button>
           </div>
         </div>
 
@@ -539,10 +603,12 @@ export default function DashboardPage() {
                 <FaLink className="text-primary" />
                 {activeSection === "records" && "Medical Records"}
                 {activeSection === "diagnosis" && "AI Analysis"}
+                {activeSection === "analysisReports" && "Analysis Reports"}
               </h2>
               <p className="text-muted-foreground mt-1">
                 {activeSection === "records" && "View and manage your blockchain-verified health records"}
                 {activeSection === "diagnosis" && "Get AI-powered health insights from symptoms and medical images"}
+                {activeSection === "analysisReports" && "View and manage your saved AI analysis reports"}
               </p>
             </div>
             {/* Profile Dropdown */}
@@ -793,12 +859,11 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {/* AI Analysis Section - Combined Side by Side */}
+          {/* AI Analysis Section - Full Width */}
           {activeSection === "diagnosis" && (
             <div className="max-w-7xl mx-auto">
-              <div className="grid lg:grid-cols-2 gap-6">
-                {/* Symptom Diagnosis Card */}
-                <Card>
+              {/* Symptom Diagnosis Card - Full Width */}
+              <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <FaRobot className="text-blue-500" />
@@ -847,47 +912,224 @@ export default function DashboardPage() {
                     </Button>
 
                     {diagnosisResult && (
-                      <div className="mt-6 space-y-4">
+                      <div className="mt-6 space-y-6">
+                        {/* Overview Section with Confidence */}
+                        <div className="grid md:grid-cols-3 gap-4">
+                          <Card>
+                            <CardContent className="p-4">
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <p className="text-sm text-muted-foreground mb-1">Overall Confidence</p>
+                                  <p className="text-3xl font-bold text-primary">
+                                    {(diagnosisResult.confidence * 100).toFixed(1)}%
+                                  </p>
+                                </div>
+                                <div className="w-16 h-16">
+                                  <ResponsiveContainer width="100%" height="100%">
+                                    <RadialBarChart
+                                      cx="50%"
+                                      cy="50%"
+                                      innerRadius="60%"
+                                      outerRadius="100%"
+                                      barSize={10}
+                                      data={[
+                                        {
+                                          name: 'Confidence',
+                                          value: diagnosisResult.confidence * 100,
+                                          fill: '#14B8A6'
+                                        }
+                                      ]}
+                                      startAngle={90}
+                                      endAngle={-270}
+                                    >
+                                      <RadialBar
+                                        dataKey="value"
+                                        cornerRadius={10}
+                                        fill="#14B8A6"
+                                      />
+                                    </RadialBarChart>
+                                  </ResponsiveContainer>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                          <Card>
+                            <CardContent className="p-4">
+                              <p className="text-sm text-muted-foreground mb-1">Possible Conditions</p>
+                              <p className="text-3xl font-bold text-blue-600">
+                                {diagnosisResult.suggestions?.length || 0}
+                              </p>
+                              <p className="text-xs text-muted-foreground mt-1">Conditions identified</p>
+                            </CardContent>
+                          </Card>
+                          <Card>
+                            <CardContent className="p-4">
+                              <p className="text-sm text-muted-foreground mb-1">Analysis Status</p>
+                              <p className="text-3xl font-bold text-green-600">Complete</p>
+                              <p className="text-xs text-muted-foreground mt-1">AI diagnosis ready</p>
+                            </CardContent>
+                          </Card>
+                        </div>
+
+                        {/* Analysis Text */}
                         <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                          <p className="font-semibold mb-2">Confidence: {(diagnosisResult.confidence * 100).toFixed(1)}%</p>
+                          <p className="font-semibold mb-2">Analysis Summary:</p>
                           <p className="text-sm">{diagnosisResult.analysis}</p>
                         </div>
 
+                        {/* Charts Section */}
                         {diagnosisResult.suggestions && diagnosisResult.suggestions.length > 0 && (
-                          <div className="space-y-2">
-                            <h3 className="font-semibold">Possible Conditions:</h3>
-                            {diagnosisResult.suggestions.map((suggestion: any, index: number) => (
-                              <Card key={index}>
-                                <CardContent className="p-4">
-                                  <div className="flex justify-between items-start mb-2">
-                                    <h4 className="font-semibold">{suggestion.condition}</h4>
-                                    <Badge>{(suggestion.probability * 100).toFixed(0)}%</Badge>
-                                  </div>
-                                  {suggestion.description && (
-                                    <p className="text-sm text-muted-foreground mb-2">{suggestion.description}</p>
-                                  )}
-                                  {(suggestion.medications && suggestion.medications.length > 0) ? (
-                                    <div className="text-sm mt-3">
-                                      <p className="font-medium mb-2">Medications to Take:</p>
-                                      <ul className="list-disc list-inside space-y-1">
-                                        {suggestion.medications.map((med: string, i: number) => (
-                                          <li key={i} className="text-muted-foreground">{med}</li>
-                                        ))}
-                                      </ul>
+                          <div className="grid lg:grid-cols-2 gap-6">
+                            {/* Condition Probabilities Bar Chart */}
+                            <Card>
+                              <CardHeader>
+                                <CardTitle className="text-lg">Condition Probabilities</CardTitle>
+                              </CardHeader>
+                              <CardContent>
+                                <ResponsiveContainer width="100%" height={300}>
+                                  <BarChart
+                                    data={diagnosisResult.suggestions.map((s: any) => ({
+                                      condition: s.condition.length > 20 
+                                        ? s.condition.substring(0, 20) + '...' 
+                                        : s.condition,
+                                      probability: (s.probability * 100).toFixed(1),
+                                      fullCondition: s.condition
+                                    }))}
+                                    margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
+                                  >
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#E7E5E4" />
+                                    <XAxis 
+                                      dataKey="condition" 
+                                      angle={-45} 
+                                      textAnchor="end" 
+                                      height={100}
+                                      tick={{ fontSize: 12 }}
+                                    />
+                                    <YAxis 
+                                      domain={[0, 100]}
+                                      tick={{ fontSize: 12 }}
+                                      label={{ value: 'Probability (%)', angle: -90, position: 'insideLeft' }}
+                                    />
+                                    <Tooltip 
+                                      formatter={(value: any) => [`${value}%`, 'Probability']}
+                                      labelFormatter={(label) => {
+                                        const fullCondition = diagnosisResult.suggestions?.find(
+                                          (s: any) => (s.condition.length > 20 
+                                            ? s.condition.substring(0, 20) + '...' 
+                                            : s.condition) === label
+                                        )?.condition || label;
+                                        return fullCondition;
+                                      }}
+                                    />
+                                    <Bar 
+                                      dataKey="probability" 
+                                      fill="#14B8A6"
+                                      radius={[8, 8, 0, 0]}
+                                    />
+                                  </BarChart>
+                                </ResponsiveContainer>
+                              </CardContent>
+                            </Card>
+
+                            {/* Condition Distribution Pie Chart */}
+                            <Card>
+                              <CardHeader>
+                                <CardTitle className="text-lg">Condition Distribution</CardTitle>
+                              </CardHeader>
+                              <CardContent>
+                                <ResponsiveContainer width="100%" height={300}>
+                                  <PieChart>
+                                    <Pie
+                                      data={diagnosisResult.suggestions.map((s: any) => ({
+                                        name: s.condition.length > 25 
+                                          ? s.condition.substring(0, 25) + '...' 
+                                          : s.condition,
+                                        value: parseFloat((s.probability * 100).toFixed(1)),
+                                        fullName: s.condition
+                                      }))}
+                                      cx="50%"
+                                      cy="50%"
+                                      labelLine={false}
+                                      label={({ name, value }) => `${name}: ${value}%`}
+                                      outerRadius={80}
+                                      fill="#8884d8"
+                                      dataKey="value"
+                                    >
+                                      {diagnosisResult.suggestions.map((_: any, index: number) => {
+                                        const colors = ['#14B8A6', '#3B82F6', '#6366F1', '#8B5CF6', '#EC4899', '#F59E0B'];
+                                        return <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />;
+                                      })}
+                                    </Pie>
+                                    <Tooltip 
+                                      formatter={(value: any) => [`${value}%`, 'Probability']}
+                                      labelFormatter={(label) => {
+                                        const fullCondition = diagnosisResult.suggestions?.find(
+                                          (s: any) => (s.condition.length > 25 
+                                            ? s.condition.substring(0, 25) + '...' 
+                                            : s.condition) === label
+                                        )?.condition || label;
+                                        return fullCondition;
+                                      }}
+                                    />
+                                    <Legend 
+                                      verticalAlign="bottom" 
+                                      height={36}
+                                      formatter={(value) => {
+                                        const fullCondition = diagnosisResult.suggestions?.find(
+                                          (s: any) => (s.condition.length > 25 
+                                            ? s.condition.substring(0, 25) + '...' 
+                                            : s.condition) === value
+                                        )?.condition || value;
+                                        return fullCondition.length > 30 ? fullCondition.substring(0, 30) + '...' : fullCondition;
+                                      }}
+                                    />
+                                  </PieChart>
+                                </ResponsiveContainer>
+                              </CardContent>
+                            </Card>
+                          </div>
+                        )}
+
+                        {/* Condition Details */}
+                        {diagnosisResult.suggestions && diagnosisResult.suggestions.length > 0 && (
+                          <div className="space-y-3">
+                            <h3 className="font-semibold text-lg">Possible Conditions:</h3>
+                            <div className="grid md:grid-cols-2 gap-4">
+                              {diagnosisResult.suggestions.map((suggestion: any, index: number) => (
+                                <Card key={index}>
+                                  <CardContent className="p-4">
+                                    <div className="flex justify-between items-start mb-2">
+                                      <h4 className="font-semibold text-base">{suggestion.condition}</h4>
+                                      <Badge className="bg-primary">
+                                        {(suggestion.probability * 100).toFixed(0)}%
+                                      </Badge>
                                     </div>
-                                  ) : (suggestion.recommendations && suggestion.recommendations.length > 0) ? (
-                                    <div className="text-sm mt-3">
-                                      <p className="font-medium mb-2">Medications to Take:</p>
-                                      <ul className="list-disc list-inside space-y-1">
-                                        {suggestion.recommendations.map((rec: string, i: number) => (
-                                          <li key={i} className="text-muted-foreground">{rec}</li>
-                                        ))}
-                                      </ul>
-                                    </div>
-                                  ) : null}
-                                </CardContent>
-                              </Card>
-                            ))}
+                                    {suggestion.description && (
+                                      <p className="text-sm text-muted-foreground mb-3">{suggestion.description}</p>
+                                    )}
+                                    {(suggestion.medications && suggestion.medications.length > 0) ? (
+                                      <div className="text-sm mt-3">
+                                        <p className="font-medium mb-2">Medications to Take:</p>
+                                        <ul className="list-disc list-inside space-y-1">
+                                          {suggestion.medications.map((med: string, i: number) => (
+                                            <li key={i} className="text-muted-foreground">{med}</li>
+                                          ))}
+                                        </ul>
+                                      </div>
+                                    ) : (suggestion.recommendations && suggestion.recommendations.length > 0) ? (
+                                      <div className="text-sm mt-3">
+                                        <p className="font-medium mb-2">Recommendations:</p>
+                                        <ul className="list-disc list-inside space-y-1">
+                                          {suggestion.recommendations.map((rec: string, i: number) => (
+                                            <li key={i} className="text-muted-foreground">{rec}</li>
+                                          ))}
+                                        </ul>
+                                      </div>
+                                    ) : null}
+                                  </CardContent>
+                                </Card>
+                              ))}
+                            </div>
                           </div>
                         )}
 
@@ -971,6 +1213,108 @@ export default function DashboardPage() {
                           </div>
                         )}
 
+                        {/* Nearby Hospitals Section */}
+                        {locationPermissionGranted && (
+                          <div className="mt-6">
+                            <h3 className="font-semibold mb-3 flex items-center gap-2 text-lg">
+                              <FaMapMarkerAlt className="text-primary" />
+                              Nearby Hospitals
+                            </h3>
+                            {loadingHospitals ? (
+                              <div className="flex items-center justify-center py-4">
+                                <FaSpinner className="animate-spin text-primary" />
+                                <span className="ml-2 text-sm text-muted-foreground">Finding nearby hospitals...</span>
+                              </div>
+                            ) : nearbyHospitals.length > 0 ? (
+                              <div className="grid md:grid-cols-2 gap-4">
+                                {nearbyHospitals.map((hospital: any, index: number) => {
+                                  return (
+                                    <Card key={index}>
+                                      <CardContent className="p-4">
+                                        <div className="flex items-start justify-between mb-2">
+                                          <div className="flex-1">
+                                            <h4 className="font-semibold flex items-center gap-2">
+                                              <FaHospital className="text-primary" />
+                                              {hospital.name}
+                                            </h4>
+                                            <p className="text-sm text-muted-foreground mt-1">
+                                              {hospital.type}
+                                            </p>
+                                            <p className="text-xs text-muted-foreground mt-1">
+                                              <FaMapMarkerAlt className="inline mr-1" />
+                                              {hospital.distance} away
+                                            </p>
+                                          </div>
+                                        </div>
+                                        {hospital.address && (
+                                          <p className="text-xs text-muted-foreground mb-2">
+                                            {hospital.address}
+                                          </p>
+                                        )}
+                                        <div className="flex flex-col gap-1 mt-2">
+                                          {hospital.phone && (
+                                            <a
+                                              href={`tel:${hospital.phone}`}
+                                              className="text-xs text-primary hover:underline flex items-center gap-1"
+                                            >
+                                              <FaPhone className="text-xs" />
+                                              {hospital.phone}
+                                            </a>
+                                          )}
+                                          {hospital.lat && hospital.lng && (
+                                            <a
+                                              href={`https://www.google.com/maps/dir/?api=1&destination=${hospital.lat},${hospital.lng}`}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="text-xs text-primary hover:underline flex items-center gap-1"
+                                            >
+                                              <FaMapMarkerAlt className="text-xs" />
+                                              Get Directions
+                                            </a>
+                                          )}
+                                        </div>
+                                      </CardContent>
+                                    </Card>
+                                  );
+                                })}
+                              </div>
+                            ) : (
+                              <Card>
+                                <CardContent className="p-4 text-center space-y-2">
+                                  <p className="text-sm text-muted-foreground">
+                                    No hospitals found nearby.
+                                  </p>
+                                  <p className="text-xs text-muted-foreground">
+                                    Please search for hospitals in your area or contact emergency services if needed.
+                                  </p>
+                                </CardContent>
+                              </Card>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Generate Report Button */}
+                        <div className="mt-6 pt-4 border-t border-border">
+                          <Button
+                            onClick={handleGenerateReport}
+                            disabled={isGeneratingReport}
+                            className="w-full"
+                            variant="outline"
+                          >
+                            {isGeneratingReport ? (
+                              <>
+                                <FaSpinner className="animate-spin mr-2" />
+                                Generating Report...
+                              </>
+                            ) : (
+                              <>
+                                <FaFileMedical className="mr-2" />
+                                Generate & Save Report
+                              </>
+                            )}
+                          </Button>
+                        </div>
+
                         <p className="text-xs text-muted-foreground p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded mt-4">
                           ⚠️ This AI analysis is for informational purposes only. Please consult a healthcare professional for proper diagnosis and treatment.
                         </p>
@@ -978,91 +1322,113 @@ export default function DashboardPage() {
                     )}
                   </CardContent>
                 </Card>
+            </div>
+          )}
 
-                {/* Image Analysis Card */}
+          {/* Analysis Reports Section */}
+          {activeSection === "analysisReports" && (
+            <div className="max-w-6xl mx-auto">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <FaFileMedical className="text-blue-500" />
+                  AI Analysis Reports
+                </h3>
+                <Button onClick={loadAnalysisReports} disabled={isLoadingAnalysisReports} variant="outline">
+                  {isLoadingAnalysisReports ? <FaSpinner className="animate-spin" /> : "Refresh"}
+                </Button>
+              </div>
+
+              {isLoadingAnalysisReports ? (
+                <div className="flex items-center justify-center py-12">
+                  <FaSpinner className="animate-spin text-4xl text-primary" />
+                </div>
+              ) : analysisReports.length === 0 ? (
                 <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <FaImage className="text-purple-500" />
-                      Image Analysis
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div>
-                      <Label htmlFor="image">Select Medical Image</Label>
-                      <Input
-                        id="image"
-                        type="file"
-                        onChange={handleImageSelect}
-                        accept="image/*"
-                        className="mt-2"
-                      />
-                      {selectedImage && (
-                        <div className="mt-4">
-                          <img
-                            src={URL.createObjectURL(selectedImage)}
-                            alt="Selected"
-                            className="max-w-full h-auto rounded-lg border"
-                          />
-                        </div>
-                      )}
-                    </div>
-
-                    <Button
-                      onClick={handleImageAnalysis}
-                      disabled={isAnalyzing || !selectedImage}
-                      className="w-full"
-                    >
-                      {isAnalyzing ? (
-                        <>
-                          <FaSpinner className="animate-spin mr-2" />
-                          Analyzing Image...
-                        </>
-                      ) : (
-                        <>
-                          <FaImage className="mr-2" />
-                          Analyze with AI
-                        </>
-                      )}
+                  <CardContent className="p-12 text-center">
+                    <FaFileMedical className="text-4xl text-muted-foreground mx-auto mb-4" />
+                    <p className="text-lg font-semibold mb-2">No analysis reports yet</p>
+                    <p className="text-sm text-muted-foreground mb-6">
+                      Generate reports from your AI diagnosis results to save them for future reference
+                    </p>
+                    <Button onClick={() => setActiveSection("diagnosis")}>
+                      <FaRobot className="mr-2" />
+                      Go to AI Analysis
                     </Button>
-
-                    {imageAnalysisResult && (
-                      <div className="mt-6 space-y-4">
-                        <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
-                          <p className="font-semibold mb-2">Diagnosis: {imageAnalysisResult.diagnosis}</p>
-                          <p className="text-sm">Confidence: {(imageAnalysisResult.confidence * 100).toFixed(1)}%</p>
-                        </div>
-
-                        {imageAnalysisResult.findings && imageAnalysisResult.findings.length > 0 && (
-                          <div>
-                            <h3 className="font-semibold mb-2">Findings:</h3>
-                            <ul className="list-disc list-inside space-y-1">
-                              {imageAnalysisResult.findings.map((finding, index) => (
-                                <li key={index} className="text-sm">{finding}</li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-
-                        {imageAnalysisResult.recommendations && imageAnalysisResult.recommendations.length > 0 && (
-                          <div>
-                            <h3 className="font-semibold mb-2">Recommendations:</h3>
-                            <ul className="list-disc list-inside space-y-1">
-                              {imageAnalysisResult.recommendations.map((rec, index) => (
-                                <li key={index} className="text-sm">{rec}</li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-
-                        <p className="text-xs text-muted-foreground p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded">
-                          ⚠️ AI image analysis should be verified by a qualified radiologist or healthcare professional.
-                        </p>
-                      </div>
-                    )}
                   </CardContent>
                 </Card>
-              </div>
+              ) : (
+                <div className="space-y-4">
+                  {analysisReports.map((report: any) => (
+                    <Card key={report.uid || report._id}>
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <h4 className="font-semibold">{report.title}</h4>
+                              <Badge className="bg-blue-500">AI Analysis</Badge>
+                              {report.aiAnalysis?.severity && (
+                                <Badge className={`${
+                                  report.aiAnalysis.severity === 'high' ? 'bg-red-500' :
+                                  report.aiAnalysis.severity === 'medium' ? 'bg-yellow-500' :
+                                  'bg-green-500'
+                                }`}>
+                                  {report.aiAnalysis.severity.toUpperCase()}
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="flex gap-4 text-sm text-muted-foreground mb-2">
+                              <span className="flex items-center gap-1">
+                                <FaCalendar className="text-xs" />
+                                {new Date(report.createdAt).toLocaleDateString()}
+                              </span>
+                              {report.aiAnalysis?.confidence !== undefined && (
+                                <span>Confidence: {report.aiAnalysis.confidence.toFixed(1)}%</span>
+                              )}
+                            </div>
+                            {report.aiAnalysis?.summary && (
+                              <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
+                                {report.aiAnalysis.summary}
+                              </p>
+                            )}
+                            {report.aiAnalysis?.conditions && report.aiAnalysis.conditions.length > 0 && (
+                              <div className="mb-3">
+                                <p className="text-xs font-semibold text-muted-foreground mb-1">Conditions Identified:</p>
+                                <div className="flex flex-wrap gap-1">
+                                  {report.aiAnalysis.conditions.slice(0, 3).map((condition: string, idx: number) => (
+                                    <Badge key={idx} variant="outline" className="text-xs">
+                                      {condition}
+                                    </Badge>
+                                  ))}
+                                  {report.aiAnalysis.conditions.length > 3 && (
+                                    <Badge variant="outline" className="text-xs">
+                                      +{report.aiAnalysis.conditions.length - 3} more
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                            {report.description && (
+                              <p className="text-xs text-muted-foreground">
+                                {report.description}
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex gap-2 ml-4">
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => window.open(`/api/reports/${report.uid}?download=true`, '_blank')}
+                            >
+                              <FaDownload className="mr-1" />
+                              Download
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>
