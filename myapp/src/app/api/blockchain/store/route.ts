@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { AIMLClient } from '@/lib/ai-ml-client';
+import { withAuth } from '@/lib/auth';
 
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async (request: NextRequest, user: any) => {
   try {
     const formData = await request.formData();
     const file = formData.get('file') as File;
@@ -33,6 +34,11 @@ export async function POST(request: NextRequest) {
       success: true,
       message: 'Medical record stored successfully',
       data: uploadResponse,
+      uploadedBy: {
+        uid: user.uid,
+        role: user.role,
+        timestamp: new Date().toISOString()
+      }
     });
   } catch (error: any) {
     console.error('Blockchain store error:', error);
@@ -41,4 +47,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

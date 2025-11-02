@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/db';
-import { Patient, User } from '@/lib/models';
 import { withAuth } from '@/lib/auth';
 import { aiMLClient } from '@/lib/ai-ml-client';
 
@@ -18,28 +17,17 @@ export const GET = withAuth(async (request: NextRequest, user: any) => {
 
     await connectDB();
 
-    // Verify patient exists and user has access
-    const patient = await Patient.findOne({ uid: patientId });
-    if (!patient) {
-      return NextResponse.json(
-        { error: 'Patient not found' },
-        { status: 404 }
-      );
-    }
-
-    // Check access permissions
+    // For patient role, ensure they can only access their own records
     if (user.role === 'patient') {
-      // Patients can only access their own records
-      const patientUser = await User.findOne({ uid: user.uid });
-      if (!patientUser || patientUser._id.toString() !== patient.userId.toString()) {
+      if (patientId !== user.uid) {
         return NextResponse.json(
           { error: 'Access denied: You can only view your own medical records' },
           { status: 403 }
         );
       }
     } else if (user.role === 'doctor') {
-      // Doctors need to have treated this patient (have created reports for them)
-      // For now, allow all doctors - could add more granular permissions later
+      // Doctors can access their patients' records
+      // Additional permission checks can be added here if needed
     }
     // Admins have full access
 
@@ -52,7 +40,8 @@ export const GET = withAuth(async (request: NextRequest, user: any) => {
       );
     }
 
-    // Retrieve patient records from blockchain
+    // Retrieve patient records from blockchain using patientId directly
+    // blockchain uses user.uid as patientId, not Patient.uid
     const blockchainRecords = await aiMLClient.getPatientRecords(patientId);
 
     return NextResponse.json({
