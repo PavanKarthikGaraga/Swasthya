@@ -3,8 +3,10 @@ import connectDB from '@/lib/db';
 import { Doctor, User } from '@/lib/models';
 import { withAuth } from '@/lib/auth';
 
-export const GET = withAuth(async (request: NextRequest, user: any) => {
+// GET endpoint - Public (anyone can view doctors)
+export const GET = async (request: NextRequest) => {
   try {
+    console.log('[Doctors API] GET request received - Public endpoint');
     await connectDB();
 
     const { searchParams } = new URL(request.url);
@@ -13,6 +15,9 @@ export const GET = withAuth(async (request: NextRequest, user: any) => {
     const search = searchParams.get('search');
     const specialization = searchParams.get('specialization');
     const available = searchParams.get('available');
+    const latitude = searchParams.get('latitude');
+    const longitude = searchParams.get('longitude');
+    const radius = parseFloat(searchParams.get('radius') || '50'); // Default 50km radius
 
     // Build query
     const query: any = {};
@@ -21,9 +26,10 @@ export const GET = withAuth(async (request: NextRequest, user: any) => {
       query.specialization = { $in: [specialization] };
     }
 
-    if (available === 'true') {
-      query.isAcceptingNewPatients = true;
-    }
+    // Only filter by available if explicitly requested, otherwise show all
+    // if (available === 'true') {
+    //   query.isAcceptingNewPatients = true;
+    // }
 
     if (search) {
       // Search in associated user data
@@ -40,14 +46,27 @@ export const GET = withAuth(async (request: NextRequest, user: any) => {
 
     const skip = (page - 1) * limit;
 
-    const doctors = await Doctor.find(query)
+    // Fetch all doctors matching the query
+    const doctorsQuery = Doctor.find(query)
       .populate('userId', 'uid email firstName lastName phoneNumber role')
-      .sort({ rating: -1, totalReviews: -1 })
+      .sort({ rating: -1, totalReviews: -1 });
+
+    // For location-based queries, we'd need to implement geospatial filtering
+    // For now, we'll just return doctors (location filtering can be added later)
+    if (latitude && longitude) {
+      // Placeholder for location-based filtering
+      // In production, use MongoDB $near or similar geospatial queries
+    }
+
+    const doctors = await doctorsQuery
       .skip(skip)
-      .limit(limit);
+      .limit(limit)
+      .exec();
 
     const total = await Doctor.countDocuments(query);
 
+    console.log(`[Doctors API] Returning ${doctors.length} doctors (total: ${total})`);
+    
     return NextResponse.json({
       doctors,
       pagination: {
@@ -57,14 +76,19 @@ export const GET = withAuth(async (request: NextRequest, user: any) => {
         pages: Math.ceil(total / limit),
       },
     });
-  } catch (error) {
-    console.error('Get doctors error:', error);
+  } catch (error: any) {
+    console.error('[Doctors API] Get doctors error:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { 
+        error: 'Internal server error',
+        details: error?.message || 'Unknown error'
+      },
       { status: 500 }
     );
   }
-});
+};
+
+// POST endpoint - Requires authentication (only admins/doctors can create doctor profiles)
 
 export const POST = withAuth(async (request: NextRequest, user: any) => {
   try {

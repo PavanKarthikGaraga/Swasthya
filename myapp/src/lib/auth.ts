@@ -63,8 +63,8 @@ export function getTokenFromRequest(request: NextRequest): string | null {
     return authHeader.substring(7);
   }
 
-  // Also check for token in cookies
-  const token = request.cookies.get('token')?.value;
+  // Also check for token in cookies (check both 'token' and 'auth_token')
+  const token = request.cookies.get('token')?.value || request.cookies.get('auth_token')?.value;
   return token || null;
 }
 

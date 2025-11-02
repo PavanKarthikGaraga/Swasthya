@@ -22,7 +22,10 @@ import {
   FaLink,
   FaShieldAlt,
   FaChevronDown,
-  FaIdCard
+  FaIdCard,
+  FaMapMarkerAlt,
+  FaHospital,
+  FaPhone,
 } from "react-icons/fa";
 
 interface Report {
@@ -82,6 +85,10 @@ export default function DashboardPage() {
   const [symptomDescription, setSymptomDescription] = useState("");
   const [isDiagnosing, setIsDiagnosing] = useState(false);
   const [diagnosisResult, setDiagnosisResult] = useState<any>(null);
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [locationPermissionGranted, setLocationPermissionGranted] = useState(false);
+  const [nearbyHospitals, setNearbyHospitals] = useState<any[]>([]);
+  const [loadingHospitals, setLoadingHospitals] = useState(false);
 
   // AI Image Analysis State
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
@@ -306,6 +313,55 @@ export default function DashboardPage() {
     }
   };
 
+
+  const requestLocationPermission = async () => {
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported by your browser");
+      return false;
+    }
+
+    try {
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject);
+      });
+
+      setUserLocation({
+        lat: position.coords.latitude,
+        lng: position.coords.longitude
+      });
+      setLocationPermissionGranted(true);
+      return true;
+    } catch (error: any) {
+      console.error("Error getting location:", error);
+      return false;
+    }
+  };
+
+  const fetchNearbyHospitals = async (condition: string = 'general') => {
+    if (!userLocation) return;
+
+    setLoadingHospitals(true);
+    try {
+      // Call backend API to search for hospitals
+      const response = await fetch(
+        `/api/hospitals/nearby?latitude=${userLocation.lat}&longitude=${userLocation.lng}&condition=${encodeURIComponent(condition)}`
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setNearbyHospitals(data.hospitals || []);
+      } else {
+        console.error("Failed to fetch nearby hospitals:", response.status);
+        setNearbyHospitals([]);
+      }
+    } catch (error) {
+      console.error("Error fetching nearby hospitals:", error);
+      setNearbyHospitals([]);
+    } finally {
+      setLoadingHospitals(false);
+    }
+  };
+
   const handleAIDiagnosis = async () => {
     if (!symptoms.trim()) {
       alert("Please enter symptoms");
@@ -314,8 +370,12 @@ export default function DashboardPage() {
 
     setIsDiagnosing(true);
     setDiagnosisResult(null);
+    setNearbyHospitals([]);
 
     try {
+      // Request location permission first
+      const locationGranted = await requestLocationPermission();
+
       const symptomsArray = symptoms.split(',').map(s => s.trim()).filter(s => s);
       
       const response = await fetch(`${ML_SERVICE_URL}/ai/diagnose`, {
@@ -332,6 +392,17 @@ export default function DashboardPage() {
 
       if (data.success) {
         setDiagnosisResult(data.diagnosis);
+        
+        // Get the main condition from diagnosis for hospital search
+        let mainCondition = 'general';
+        if (data.diagnosis?.suggestions && data.diagnosis.suggestions.length > 0) {
+          mainCondition = data.diagnosis.suggestions[0].condition?.toLowerCase() || 'general';
+        }
+        
+        // Fetch nearby hospitals if location permission was granted
+        if (locationGranted) {
+          await fetchNearbyHospitals(mainCondition);
+        }
       } else {
         throw new Error(data.error || "Diagnosis failed");
       }
@@ -795,23 +866,112 @@ export default function DashboardPage() {
                                   {suggestion.description && (
                                     <p className="text-sm text-muted-foreground mb-2">{suggestion.description}</p>
                                   )}
-                                  {suggestion.recommendations && (
-                                    <div className="text-sm">
-                                      <p className="font-medium">Recommendations:</p>
-                                      <ul className="list-disc list-inside">
-                                        {suggestion.recommendations.map((rec: string, i: number) => (
-                                          <li key={i}>{rec}</li>
+                                  {(suggestion.medications && suggestion.medications.length > 0) ? (
+                                    <div className="text-sm mt-3">
+                                      <p className="font-medium mb-2">Medications to Take:</p>
+                                      <ul className="list-disc list-inside space-y-1">
+                                        {suggestion.medications.map((med: string, i: number) => (
+                                          <li key={i} className="text-muted-foreground">{med}</li>
                                         ))}
                                       </ul>
                                     </div>
-                                  )}
+                                  ) : (suggestion.recommendations && suggestion.recommendations.length > 0) ? (
+                                    <div className="text-sm mt-3">
+                                      <p className="font-medium mb-2">Medications to Take:</p>
+                                      <ul className="list-disc list-inside space-y-1">
+                                        {suggestion.recommendations.map((rec: string, i: number) => (
+                                          <li key={i} className="text-muted-foreground">{rec}</li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  ) : null}
                                 </CardContent>
                               </Card>
                             ))}
                           </div>
                         )}
 
-                        <p className="text-xs text-muted-foreground p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded">
+                        {/* Nearby Hospitals Section */}
+                        {locationPermissionGranted && (
+                          <div className="mt-6">
+                            <h3 className="font-semibold mb-3 flex items-center gap-2">
+                              <FaMapMarkerAlt className="text-primary" />
+                              Nearby Hospitals
+                            </h3>
+                            {loadingHospitals ? (
+                              <div className="flex items-center justify-center py-4">
+                                <FaSpinner className="animate-spin text-primary" />
+                                <span className="ml-2 text-sm text-muted-foreground">Finding nearby hospitals...</span>
+                              </div>
+                            ) : nearbyHospitals.length > 0 ? (
+                              <div className="space-y-3">
+                                {nearbyHospitals.map((hospital: any, index: number) => {
+                                  return (
+                                    <Card key={index}>
+                                      <CardContent className="p-4">
+                                        <div className="flex items-start justify-between mb-2">
+                                          <div className="flex-1">
+                                            <h4 className="font-semibold flex items-center gap-2">
+                                              <FaHospital className="text-primary" />
+                                              {hospital.name}
+                                            </h4>
+                                            <p className="text-sm text-muted-foreground mt-1">
+                                              {hospital.type}
+                                            </p>
+                                            <p className="text-xs text-muted-foreground mt-1">
+                                              <FaMapMarkerAlt className="inline mr-1" />
+                                              {hospital.distance} away
+                                            </p>
+                                          </div>
+                                        </div>
+                                        {hospital.address && (
+                                          <p className="text-xs text-muted-foreground mb-2">
+                                            {hospital.address}
+                                          </p>
+                                        )}
+                                        <div className="flex flex-col gap-1 mt-2">
+                                          {hospital.phone && (
+                                            <a
+                                              href={`tel:${hospital.phone}`}
+                                              className="text-xs text-primary hover:underline flex items-center gap-1"
+                                            >
+                                              <FaPhone className="text-xs" />
+                                              {hospital.phone}
+                                            </a>
+                                          )}
+                                          {hospital.lat && hospital.lng && (
+                                            <a
+                                              href={`https://www.google.com/maps/dir/?api=1&destination=${hospital.lat},${hospital.lng}`}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="text-xs text-primary hover:underline flex items-center gap-1"
+                                            >
+                                              <FaMapMarkerAlt className="text-xs" />
+                                              Get Directions
+                                            </a>
+                                          )}
+                                        </div>
+                                      </CardContent>
+                                    </Card>
+                                  );
+                                })}
+                              </div>
+                            ) : (
+                              <Card>
+                                <CardContent className="p-4 text-center space-y-2">
+                                  <p className="text-sm text-muted-foreground">
+                                    No hospitals found nearby.
+                                  </p>
+                                  <p className="text-xs text-muted-foreground">
+                                    Please search for hospitals in your area or contact emergency services if needed.
+                                  </p>
+                                </CardContent>
+                              </Card>
+                            )}
+                          </div>
+                        )}
+
+                        <p className="text-xs text-muted-foreground p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded mt-4">
                           ⚠️ This AI analysis is for informational purposes only. Please consult a healthcare professional for proper diagnosis and treatment.
                         </p>
                       </div>
