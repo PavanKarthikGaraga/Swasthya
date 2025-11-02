@@ -52,7 +52,7 @@ export class AIMLClient {
   private mlServiceUrl: string;
 
   constructor() {
-    this.mlServiceUrl = process.env.NEXT_PUBLIC_ML_SERVICE_URL || process.env.ML_SERVICE_URL || 'http://localhost:5000';
+    this.mlServiceUrl = process.env.NEXT_PUBLIC_ML_SERVICE_URL || process.env.ML_SERVICE_URL || 'http://localhost:4000';
 
     this.client = axios.create({
       baseURL: this.mlServiceUrl,

@@ -20,7 +20,9 @@ import {
   FaCheckCircle,
   FaExclamationTriangle,
   FaLink,
-  FaShieldAlt
+  FaShieldAlt,
+  FaChevronDown,
+  FaIdCard
 } from "react-icons/fa";
 
 interface Report {
@@ -31,6 +33,7 @@ interface Report {
   status: string;
   blockchainVerified: boolean;
   blockHash?: string;
+  prevHash?: string;
 }
 
 interface DiagnosisResult {
@@ -43,8 +46,12 @@ interface DiagnosisResult {
 
 export default function DashboardPage() {
   const router = useRouter();
-  const [activeSection, setActiveSection] = useState("upload");
+  const [activeSection, setActiveSection] = useState("records"); // Changed default from "upload" to "records"
   const [isMounted, setIsMounted] = useState(false);
+  const [showAddRecordModal, setShowAddRecordModal] = useState(false); // New state for modal
+  const [showProfileDropdown, setShowProfileDropdown] = useState(false); // Profile dropdown state
+  const [showProfileModal, setShowProfileModal] = useState(false); // Profile modal state
+  const [userProfile, setUserProfile] = useState<any>(null); // Store full profile data
   const [user, setUser] = useState({
     name: "Loading...",
     email: "",
@@ -53,7 +60,7 @@ export default function DashboardPage() {
   });
 
   // Get ML service URL from environment or default
-  const ML_SERVICE_URL = process.env.NEXT_PUBLIC_ML_SERVICE_URL || 'http://localhost:5000';
+  const ML_SERVICE_URL = process.env.NEXT_PUBLIC_ML_SERVICE_URL || 'http://localhost:4000';
 
   // Ensure component is mounted (client-side only)
   useEffect(() => {
@@ -87,35 +94,89 @@ export default function DashboardPage() {
 
   // Load user data
   useEffect(() => {
-    const loadUserData = () => {
+    const loadUserData = async () => {
       try {
+        // First try localStorage
         const storedUser = localStorage.getItem("user");
     const storedProfile = localStorage.getItem("userProfile");
         
         if (storedUser) {
-          const userData = JSON.parse(storedUser);
-          setUser({
-            name: `${userData.firstName} ${userData.lastName}`,
-            email: userData.email || "",
-            role: userData.role || "Patient",
-            uid: userData.uid || ""
-          });
+          try {
+            const userData = JSON.parse(storedUser);
+            if (userData.firstName && userData.lastName) {
+              setUser({
+                name: `${userData.firstName} ${userData.lastName}`,
+                email: userData.email || "",
+                role: userData.role || "Patient",
+                uid: userData.uid || ""
+              });
+              return; // Successfully loaded from localStorage
+            }
+          } catch (e) {
+            console.warn("Error parsing stored user:", e);
+          }
         } else if (storedProfile) {
+          try {
       const profile = JSON.parse(storedProfile);
+            if (profile.firstName && profile.lastName) {
       setUser({
         name: `${profile.firstName} ${profile.lastName}`,
-            email: profile.email || "",
+                email: profile.email || "",
         role: "Patient",
-            uid: profile.uid || ""
-          });
+                uid: profile.uid || ""
+              });
+              return; // Successfully loaded from profile
+            }
+          } catch (e) {
+            console.warn("Error parsing stored profile:", e);
+          }
+        }
+
+        // If localStorage failed or incomplete, fetch from API
+        const response = await fetch('/api/auth/me', {
+          credentials: 'include', // Include cookies
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.user) {
+            const userData = data.user;
+            setUser({
+              name: `${userData.firstName || ''} ${userData.lastName || ''}`.trim() || 'User',
+              email: userData.email || "",
+              role: userData.role || "Patient",
+              uid: userData.uid || ""
+            });
+            // Also store in localStorage for next time
+            localStorage.setItem("user", JSON.stringify(userData));
+          }
+        } else if (response.status === 401) {
+          // Not authenticated, redirect to login
+          router.push('/auth/login');
         }
       } catch (error) {
         console.error("Error loading user data:", error);
+        // If everything fails, try to redirect to login
+        router.push('/auth/login');
       }
     };
 
-    loadUserData();
-  }, []);
+    const loadProfileData = () => {
+      try {
+        const storedProfile = localStorage.getItem("userProfile");
+        if (storedProfile) {
+          setUserProfile(JSON.parse(storedProfile));
+        }
+      } catch (error) {
+        console.error("Error loading profile data:", error);
+      }
+    };
+
+    if (isMounted) {
+      loadUserData();
+      loadProfileData();
+    }
+  }, [isMounted, router]);
 
   // Load blockchain records
   useEffect(() => {
@@ -133,15 +194,33 @@ export default function DashboardPage() {
       const data = await response.json();
       
       if (data.success && data.records) {
-        const formattedReports: Report[] = data.records.map((record: any) => ({
-          id: record.data.fileId,
-          title: record.data.filename,
-          date: new Date(record.timestamp).toLocaleDateString(),
-          type: record.data.metadata?.type || 'medical_record',
-          status: 'verified',
-          blockchainVerified: true,
-          blockHash: record.hash
-        }));
+        // Handle new medical_records structure (clean, no chunks)
+        const formattedReports: Report[] = data.records.map((record: any) => {
+          // New structure from medical_records collection
+          if (record.recordId && record.blockHash) {
+            return {
+              id: record.id || record.recordId,
+              title: record.metadata?.title || record.originalName || record.filename,
+              date: new Date(record.createdAt || record.updatedAt).toLocaleDateString(),
+              type: record.metadata?.type || record.labels?.[0] || 'medical_record',
+              status: record.blockchainVerified ? 'verified' : 'pending',
+              blockchainVerified: record.blockchainVerified || !!record.blockHash,
+              blockHash: record.blockHash,
+              prevHash: record.prevHash
+            };
+          }
+          // Fallback for old block structure
+          return {
+            id: record.data?.fileId || record.id,
+            title: record.data?.metadata?.title || record.data?.filename || 'Record',
+            date: new Date(record.timestamp || record.createdAt).toLocaleDateString(),
+            type: record.data?.metadata?.type || 'medical_record',
+            status: 'verified',
+            blockchainVerified: true,
+            blockHash: record.hash || record.blockHash,
+            prevHash: record.prevHash
+          };
+        });
         setReports(formattedReports);
       }
     } catch (error) {
@@ -207,10 +286,12 @@ export default function DashboardPage() {
         setSelectedFile(null);
         setUploadMetadata({ title: "", description: "", type: "lab_result" });
         
-        // Reload records
-        if (activeSection === "records") {
+        // Reload records and close modal after a brief delay
+    setTimeout(() => {
           loadBlockchainRecords();
-        }
+          setShowAddRecordModal(false);
+          setUploadStatus(null);
+        }, 2000);
       } else {
         throw new Error(uploadData.error || "Upload failed");
       }
@@ -310,8 +391,16 @@ export default function DashboardPage() {
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      // Call logout API to clear cookie
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } catch (error) {
+      console.error('Logout API error:', error);
+    }
+    // Clear local storage
     localStorage.clear();
+    // Redirect to login
     router.push("/auth/login");
   };
 
@@ -320,8 +409,8 @@ export default function DashboardPage() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <FaSpinner className="animate-spin text-4xl text-primary" />
-      </div>
-    );
+    </div>
+  );
   }
 
   return (
@@ -344,15 +433,15 @@ export default function DashboardPage() {
         {/* Navigation */}
         <div className="flex-1 p-4 space-y-2">
             <button
-            onClick={() => setActiveSection("upload")}
+            onClick={() => setActiveSection("records")}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-              activeSection === "upload"
+              activeSection === "records"
                 ? "bg-primary text-primary-foreground"
                 : "text-muted-foreground hover:bg-muted"
-            }`}
-          >
-            <FaUpload />
-            <span>Upload Records</span>
+              }`}
+            >
+            <FaFileAlt />
+            <span>Medical Records</span>
             </button>
 
             <button
@@ -364,46 +453,10 @@ export default function DashboardPage() {
               }`}
             >
             <FaRobot />
-              <span>AI Diagnosis</span>
+              <span>AI Analysis</span>
             </button>
-
-          <button
-            onClick={() => setActiveSection("imageAnalysis")}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-              activeSection === "imageAnalysis"
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:bg-muted"
-            }`}
-          >
-            <FaImage />
-            <span>Image Analysis</span>
-          </button>
-
-            <button
-            onClick={() => setActiveSection("records")}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-              activeSection === "records"
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:bg-muted"
-            }`}
-          >
-            <FaFileAlt />
-            <span>My Records</span>
-            </button>
+          </div>
         </div>
-
-        {/* Logout */}
-        <div className="p-4 border-t border-border">
-          <Button 
-            variant="ghost" 
-            onClick={handleLogout}
-            className="w-full justify-start gap-3"
-          >
-            <FaSignOutAlt />
-            <span>Logout</span>
-          </Button>
-        </div>
-      </div>
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
@@ -413,317 +466,86 @@ export default function DashboardPage() {
             <div>
               <h2 className="text-2xl font-bold flex items-center gap-2">
                 <FaLink className="text-primary" />
-                {activeSection === "upload" && "Upload Medical Records"}
-                {activeSection === "diagnosis" && "AI Symptom Diagnosis"}
-                {activeSection === "imageAnalysis" && "AI Image Analysis"}
-                {activeSection === "records" && "Blockchain Records"}
+                {activeSection === "records" && "Medical Records"}
+                {activeSection === "diagnosis" && "AI Analysis"}
               </h2>
               <p className="text-muted-foreground mt-1">
-                {activeSection === "upload" && "Securely store records on blockchain"}
-                {activeSection === "diagnosis" && "Get AI-powered health insights"}
-                {activeSection === "imageAnalysis" && "Analyze medical images with AI"}
-                {activeSection === "records" && "View your blockchain-verified records"}
+                {activeSection === "records" && "View and manage your blockchain-verified health records"}
+                {activeSection === "diagnosis" && "Get AI-powered health insights from symptoms and medical images"}
               </p>
             </div>
-            <div className="flex items-center gap-3">
+            {/* Profile Dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => setShowProfileDropdown(!showProfileDropdown)}
+                className="flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-muted transition-colors"
+              >
               <div className="text-right">
-                <p className="font-semibold">{user.name}</p>
-                <p className="text-sm text-muted-foreground">{user.email}</p>
+                  <p className="font-semibold text-sm">{user.name}</p>
+                  <p className="text-xs text-muted-foreground">{user.email}</p>
               </div>
               <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
                 <FaUser className="text-primary" />
               </div>
+                <FaChevronDown className={`text-muted-foreground transition-transform ${showProfileDropdown ? 'rotate-180' : ''}`} />
+              </button>
+
+              {/* Dropdown Menu */}
+              {showProfileDropdown && (
+                <>
+                  <div 
+                    className="fixed inset-0 z-40" 
+                    onClick={() => setShowProfileDropdown(false)}
+                  />
+                  <div className="absolute right-0 mt-2 w-56 bg-card border border-border rounded-lg shadow-lg z-50">
+                    <div className="p-2">
+                      <button
+                        onClick={() => {
+                          setShowProfileModal(true);
+                          setShowProfileDropdown(false);
+                        }}
+                        className="w-full flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-muted transition-colors text-left"
+                      >
+                        <FaIdCard className="text-primary" />
+                        <span>Profile</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          handleLogout();
+                          setShowProfileDropdown(false);
+                        }}
+                        className="w-full flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-muted transition-colors text-left text-destructive"
+                      >
+                        <FaSignOutAlt />
+                        <span>Logout</span>
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
 
         {/* Content */}
         <div className="flex-1 p-8 overflow-auto">
-          {/* Upload Records Section */}
-          {activeSection === "upload" && (
-            <Card className="max-w-2xl mx-auto">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <FaShieldAlt className="text-green-500" />
-                  Upload to Blockchain
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <Label htmlFor="file">Select Medical Record</Label>
-                  <Input
-                    id="file"
-                    type="file"
-                    onChange={handleFileSelect}
-                    accept=".pdf,.jpg,.jpeg,.png,.dcm"
-                    className="mt-2"
-                  />
-                  {selectedFile && (
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Selected: {selectedFile.name} ({(selectedFile.size / 1024).toFixed(2)} KB)
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <Label htmlFor="title">Record Title *</Label>
-                  <Input
-                    id="title"
-                    value={uploadMetadata.title}
-                    onChange={(e) => setUploadMetadata({ ...uploadMetadata, title: e.target.value })}
-                    placeholder="e.g., Blood Test Results - Jan 2024"
-                    className="mt-2"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="type">Record Type</Label>
-                  <select
-                    id="type"
-                    value={uploadMetadata.type}
-                    onChange={(e) => setUploadMetadata({ ...uploadMetadata, type: e.target.value })}
-                    className="w-full mt-2 px-3 py-2 border border-input rounded-md"
-                  >
-                    <option value="lab_result">Lab Result</option>
-                    <option value="imaging">Imaging (X-ray, MRI, CT)</option>
-                    <option value="prescription">Prescription</option>
-                    <option value="discharge_summary">Discharge Summary</option>
-                    <option value="consultation_notes">Consultation Notes</option>
-                  </select>
-                </div>
-
-                <div>
-                  <Label htmlFor="description">Description (Optional)</Label>
-                  <textarea
-                    id="description"
-                    value={uploadMetadata.description}
-                    onChange={(e) => setUploadMetadata({ ...uploadMetadata, description: e.target.value })}
-                    placeholder="Additional notes about this record"
-                    className="w-full mt-2 px-3 py-2 border border-input rounded-md min-h-[80px]"
-                  />
-                </div>
-
-                {uploadStatus && (
-                  <div className={`p-4 rounded-lg ${
-                    uploadStatus.type === "success" ? "bg-green-50 text-green-800" : "bg-red-50 text-red-800"
-                  }`}>
-                    {uploadStatus.message}
-                  </div>
-                )}
-
-                <Button
-                  onClick={handleUploadRecord}
-                  disabled={isUploading || !selectedFile || !uploadMetadata.title}
-                  className="w-full"
-                >
-                  {isUploading ? (
-                    <>
-                      <FaSpinner className="animate-spin mr-2" />
-                      Uploading to Blockchain...
-                    </>
-                  ) : (
-                    <>
-                      <FaLink className="mr-2" />
-                      Upload to Blockchain
-                    </>
-                  )}
-                </Button>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* AI Diagnosis Section */}
-          {activeSection === "diagnosis" && (
-            <Card className="max-w-2xl mx-auto">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <FaRobot className="text-blue-500" />
-                  AI Symptom Analysis
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <Label htmlFor="symptoms">Symptoms (comma-separated) *</Label>
-                  <Input
-                    id="symptoms"
-                    value={symptoms}
-                    onChange={(e) => setSymptoms(e.target.value)}
-                    placeholder="e.g., fever, cough, headache"
-                    className="mt-2"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="symptomDesc">Additional Details</Label>
-                  <textarea
-                    id="symptomDesc"
-                    value={symptomDescription}
-                    onChange={(e) => setSymptomDescription(e.target.value)}
-                    placeholder="Describe how long you've had these symptoms, severity, etc."
-                    className="w-full mt-2 px-3 py-2 border border-input rounded-md min-h-[80px]"
-                  />
-                </div>
-
-                <Button
-                  onClick={handleAIDiagnosis}
-                  disabled={isDiagnosing || !symptoms.trim()}
-                  className="w-full"
-                >
-                  {isDiagnosing ? (
-                    <>
-                      <FaSpinner className="animate-spin mr-2" />
-                      Analyzing...
-                    </>
-                  ) : (
-                    <>
-                      <FaRobot className="mr-2" />
-                      Get AI Diagnosis
-                    </>
-                  )}
-                </Button>
-
-                {diagnosisResult && (
-                  <div className="mt-6 space-y-4">
-                    <div className="p-4 bg-blue-50 rounded-lg">
-                      <p className="font-semibold mb-2">Confidence: {(diagnosisResult.confidence * 100).toFixed(1)}%</p>
-                      <p className="text-sm">{diagnosisResult.analysis}</p>
-                    </div>
-
-                    {diagnosisResult.suggestions && diagnosisResult.suggestions.length > 0 && (
-                      <div className="space-y-2">
-                        <h3 className="font-semibold">Possible Conditions:</h3>
-                        {diagnosisResult.suggestions.map((suggestion: any, index: number) => (
-                          <Card key={index}>
-                            <CardContent className="p-4">
-                              <div className="flex justify-between items-start mb-2">
-                                <h4 className="font-semibold">{suggestion.condition}</h4>
-                                <Badge>{(suggestion.probability * 100).toFixed(0)}%</Badge>
-                              </div>
-                              {suggestion.description && (
-                                <p className="text-sm text-muted-foreground mb-2">{suggestion.description}</p>
-                              )}
-                              {suggestion.recommendations && (
-                                <div className="text-sm">
-                                  <p className="font-medium">Recommendations:</p>
-                                  <ul className="list-disc list-inside">
-                                    {suggestion.recommendations.map((rec: string, i: number) => (
-                                      <li key={i}>{rec}</li>
-                                    ))}
-                                  </ul>
-                                </div>
-                              )}
-                            </CardContent>
-                          </Card>
-                        ))}
-                      </div>
-                    )}
-
-                    <p className="text-xs text-muted-foreground p-2 bg-yellow-50 rounded">
-                      ⚠️ This AI analysis is for informational purposes only. Please consult a healthcare professional for proper diagnosis and treatment.
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Image Analysis Section */}
-          {activeSection === "imageAnalysis" && (
-            <Card className="max-w-2xl mx-auto">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <FaImage className="text-purple-500" />
-                  Medical Image Analysis
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <Label htmlFor="image">Select Medical Image</Label>
-                  <Input
-                    id="image"
-                    type="file"
-                    onChange={handleImageSelect}
-                    accept="image/*"
-                    className="mt-2"
-                  />
-                  {selectedImage && (
-                    <div className="mt-4">
-                      <img
-                        src={URL.createObjectURL(selectedImage)}
-                        alt="Selected"
-                        className="max-w-full h-auto rounded-lg border"
-                      />
-                    </div>
-                  )}
-                </div>
-
-                <Button
-                  onClick={handleImageAnalysis}
-                  disabled={isAnalyzing || !selectedImage}
-                  className="w-full"
-                >
-                  {isAnalyzing ? (
-                    <>
-                      <FaSpinner className="animate-spin mr-2" />
-                      Analyzing Image...
-                    </>
-                  ) : (
-                    <>
-                      <FaImage className="mr-2" />
-                      Analyze with AI
-                    </>
-                  )}
-                </Button>
-
-                {imageAnalysisResult && (
-                  <div className="mt-6 space-y-4">
-                    <div className="p-4 bg-purple-50 rounded-lg">
-                      <p className="font-semibold mb-2">Diagnosis: {imageAnalysisResult.diagnosis}</p>
-                      <p className="text-sm">Confidence: {(imageAnalysisResult.confidence * 100).toFixed(1)}%</p>
-                    </div>
-
-                    {imageAnalysisResult.findings && imageAnalysisResult.findings.length > 0 && (
-                      <div>
-                        <h3 className="font-semibold mb-2">Findings:</h3>
-                        <ul className="list-disc list-inside space-y-1">
-                          {imageAnalysisResult.findings.map((finding, index) => (
-                            <li key={index} className="text-sm">{finding}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-
-                    {imageAnalysisResult.recommendations && imageAnalysisResult.recommendations.length > 0 && (
-                      <div>
-                        <h3 className="font-semibold mb-2">Recommendations:</h3>
-                        <ul className="list-disc list-inside space-y-1">
-                          {imageAnalysisResult.recommendations.map((rec, index) => (
-                            <li key={index} className="text-sm">{rec}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-
-                    <p className="text-xs text-muted-foreground p-2 bg-yellow-50 rounded">
-                      ⚠️ AI image analysis should be verified by a qualified radiologist or healthcare professional.
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* My Records Section */}
+          {/* Medical Records Section - Unified */}
           {activeSection === "records" && (
-            <div className="max-w-4xl mx-auto">
+            <div className="max-w-6xl mx-auto">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg font-semibold flex items-center gap-2">
                   <FaShieldAlt className="text-green-500" />
                   Blockchain-Verified Records
                 </h3>
-                <Button onClick={loadBlockchainRecords} disabled={isLoadingRecords}>
-                  {isLoadingRecords ? <FaSpinner className="animate-spin" /> : "Refresh"}
-                </Button>
+                <div className="flex gap-3">
+                  <Button onClick={loadBlockchainRecords} disabled={isLoadingRecords} variant="outline">
+                    {isLoadingRecords ? <FaSpinner className="animate-spin" /> : "Refresh"}
+                  </Button>
+                  <Button onClick={() => setShowAddRecordModal(true)}>
+                    <FaUpload className="mr-2" />
+                    Add New Record
+                  </Button>
+                </div>
               </div>
 
               {isLoadingRecords ? (
@@ -734,8 +556,12 @@ export default function DashboardPage() {
                 <Card>
                   <CardContent className="p-12 text-center">
                     <FaFileAlt className="text-4xl text-muted-foreground mx-auto mb-4" />
-                    <p className="text-muted-foreground">No records found on blockchain</p>
-                    <p className="text-sm text-muted-foreground mt-2">Upload your first record to get started!</p>
+                    <p className="text-lg font-semibold mb-2">No medical records yet</p>
+                    <p className="text-sm text-muted-foreground mb-6">Start by adding your first health record to the blockchain</p>
+                    <Button onClick={() => setShowAddRecordModal(true)}>
+                      <FaUpload className="mr-2" />
+                      Add Your First Record
+                    </Button>
                   </CardContent>
                 </Card>
               ) : (
@@ -759,9 +585,16 @@ export default function DashboardPage() {
                               <span>Type: {report.type}</span>
                             </div>
                             {report.blockHash && (
-                              <p className="text-xs text-muted-foreground mt-2 font-mono">
-                                Block: {report.blockHash.substring(0, 32)}...
-                              </p>
+                              <div className="mt-2 space-y-1">
+                                <p className="text-xs text-muted-foreground font-mono">
+                                  <span className="font-semibold">Hash:</span> {report.blockHash.substring(0, 24)}...
+                                </p>
+                                {report.prevHash && (
+                                  <p className="text-xs text-muted-foreground font-mono">
+                                    <span className="font-semibold">Prev:</span> {report.prevHash.substring(0, 24)}...
+                                  </p>
+                                )}
+                              </div>
                             )}
                           </div>
                           <Button variant="outline" size="sm">
@@ -773,10 +606,488 @@ export default function DashboardPage() {
                   ))}
                 </div>
               )}
+
+              {/* Add Record Modal */}
+              {showAddRecordModal && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowAddRecordModal(false)}>
+                  <Card className="max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="flex items-center gap-2">
+                          <FaUpload className="text-green-500" />
+                          Add New Medical Record
+                        </CardTitle>
+                        <button 
+                          onClick={() => setShowAddRecordModal(false)}
+                          className="text-muted-foreground hover:text-foreground"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div>
+                        <Label htmlFor="file">Select Medical Record *</Label>
+                        <Input
+                          id="file"
+                          type="file"
+                          onChange={handleFileSelect}
+                          accept=".pdf,.jpg,.jpeg,.png,.dcm"
+                          className="mt-2"
+                        />
+                        {selectedFile && (
+                          <p className="text-sm text-muted-foreground mt-1">
+                            Selected: {selectedFile.name} ({(selectedFile.size / 1024).toFixed(2)} KB)
+                          </p>
+                        )}
+                      </div>
+
+                      <div>
+                        <Label htmlFor="title">Record Title *</Label>
+                        <Input
+                          id="title"
+                          value={uploadMetadata.title}
+                          onChange={(e) => setUploadMetadata({ ...uploadMetadata, title: e.target.value })}
+                          placeholder="e.g., Blood Test Results - Jan 2024"
+                          className="mt-2"
+                        />
+                      </div>
+
+                      <div>
+                        <Label htmlFor="type">Record Type *</Label>
+                        <select
+                          id="type"
+                          value={uploadMetadata.type}
+                          onChange={(e) => setUploadMetadata({ ...uploadMetadata, type: e.target.value })}
+                          className="w-full mt-2 px-3 py-2 border border-input rounded-md bg-background"
+                        >
+                          <option value="lab_result">Lab Result</option>
+                          <option value="imaging">Imaging (X-ray, MRI, CT)</option>
+                          <option value="prescription">Prescription</option>
+                          <option value="discharge_summary">Discharge Summary</option>
+                          <option value="consultation_notes">Consultation Notes</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="description">Description (Optional)</Label>
+                        <textarea
+                          id="description"
+                          value={uploadMetadata.description}
+                          onChange={(e) => setUploadMetadata({ ...uploadMetadata, description: e.target.value })}
+                          placeholder="Additional notes about this record"
+                          className="w-full mt-2 px-3 py-2 border border-input rounded-md min-h-[80px] bg-background"
+                        />
+                      </div>
+
+                      {uploadStatus && (
+                        <div className={`p-4 rounded-lg ${
+                          uploadStatus.type === "success" ? "bg-green-50 text-green-800 dark:bg-green-900 dark:text-green-100" : "bg-red-50 text-red-800 dark:bg-red-900 dark:text-red-100"
+                        }`}>
+                          {uploadStatus.message}
+                        </div>
+                      )}
+
+                      <div className="flex gap-3 pt-4">
+                        <Button
+                          variant="outline"
+                          onClick={() => setShowAddRecordModal(false)}
+                          className="flex-1"
+                          disabled={isUploading}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          onClick={handleUploadRecord}
+                          disabled={isUploading || !selectedFile || !uploadMetadata.title}
+                          className="flex-1"
+                        >
+                          {isUploading ? (
+                            <>
+                              <FaSpinner className="animate-spin mr-2" />
+                              Uploading...
+                            </>
+                          ) : (
+                            <>
+                              <FaLink className="mr-2" />
+                              Upload to Blockchain
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* AI Analysis Section - Combined Side by Side */}
+          {activeSection === "diagnosis" && (
+            <div className="max-w-7xl mx-auto">
+              <div className="grid lg:grid-cols-2 gap-6">
+                {/* Symptom Diagnosis Card */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <FaRobot className="text-blue-500" />
+                      Symptom Analysis
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <Label htmlFor="symptoms">Symptoms (comma-separated) *</Label>
+                      <Input
+                        id="symptoms"
+                        value={symptoms}
+                        onChange={(e) => setSymptoms(e.target.value)}
+                        placeholder="e.g., fever, cough, headache"
+                        className="mt-2"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="symptomDesc">Additional Details</Label>
+                      <textarea
+                        id="symptomDesc"
+                        value={symptomDescription}
+                        onChange={(e) => setSymptomDescription(e.target.value)}
+                        placeholder="Describe how long you've had these symptoms, severity, etc."
+                        className="w-full mt-2 px-3 py-2 border border-input rounded-md min-h-[80px] bg-background"
+                      />
+                    </div>
+
+                    <Button
+                      onClick={handleAIDiagnosis}
+                      disabled={isDiagnosing || !symptoms.trim()}
+                      className="w-full"
+                    >
+                      {isDiagnosing ? (
+                        <>
+                          <FaSpinner className="animate-spin mr-2" />
+                          Analyzing...
+                        </>
+                      ) : (
+                        <>
+                          <FaRobot className="mr-2" />
+                          Get AI Diagnosis
+                        </>
+                      )}
+                    </Button>
+
+                    {diagnosisResult && (
+                      <div className="mt-6 space-y-4">
+                        <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                          <p className="font-semibold mb-2">Confidence: {(diagnosisResult.confidence * 100).toFixed(1)}%</p>
+                          <p className="text-sm">{diagnosisResult.analysis}</p>
+                        </div>
+
+                        {diagnosisResult.suggestions && diagnosisResult.suggestions.length > 0 && (
+                          <div className="space-y-2">
+                            <h3 className="font-semibold">Possible Conditions:</h3>
+                            {diagnosisResult.suggestions.map((suggestion: any, index: number) => (
+                              <Card key={index}>
+                                <CardContent className="p-4">
+                                  <div className="flex justify-between items-start mb-2">
+                                    <h4 className="font-semibold">{suggestion.condition}</h4>
+                                    <Badge>{(suggestion.probability * 100).toFixed(0)}%</Badge>
+                                  </div>
+                                  {suggestion.description && (
+                                    <p className="text-sm text-muted-foreground mb-2">{suggestion.description}</p>
+                                  )}
+                                  {suggestion.recommendations && (
+                                    <div className="text-sm">
+                                      <p className="font-medium">Recommendations:</p>
+                                      <ul className="list-disc list-inside">
+                                        {suggestion.recommendations.map((rec: string, i: number) => (
+                                          <li key={i}>{rec}</li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  )}
+                                </CardContent>
+                              </Card>
+                            ))}
+                          </div>
+                        )}
+
+                        <p className="text-xs text-muted-foreground p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded">
+                          ⚠️ This AI analysis is for informational purposes only. Please consult a healthcare professional for proper diagnosis and treatment.
+                        </p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Image Analysis Card */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <FaImage className="text-purple-500" />
+                      Image Analysis
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <Label htmlFor="image">Select Medical Image</Label>
+                      <Input
+                        id="image"
+                        type="file"
+                        onChange={handleImageSelect}
+                        accept="image/*"
+                        className="mt-2"
+                      />
+                      {selectedImage && (
+                        <div className="mt-4">
+                          <img
+                            src={URL.createObjectURL(selectedImage)}
+                            alt="Selected"
+                            className="max-w-full h-auto rounded-lg border"
+                          />
+                        </div>
+                      )}
+                    </div>
+
+                    <Button
+                      onClick={handleImageAnalysis}
+                      disabled={isAnalyzing || !selectedImage}
+                      className="w-full"
+                    >
+                      {isAnalyzing ? (
+                        <>
+                          <FaSpinner className="animate-spin mr-2" />
+                          Analyzing Image...
+                        </>
+                      ) : (
+                        <>
+                          <FaImage className="mr-2" />
+                          Analyze with AI
+                        </>
+                      )}
+                    </Button>
+
+                    {imageAnalysisResult && (
+                      <div className="mt-6 space-y-4">
+                        <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+                          <p className="font-semibold mb-2">Diagnosis: {imageAnalysisResult.diagnosis}</p>
+                          <p className="text-sm">Confidence: {(imageAnalysisResult.confidence * 100).toFixed(1)}%</p>
+                        </div>
+
+                        {imageAnalysisResult.findings && imageAnalysisResult.findings.length > 0 && (
+                          <div>
+                            <h3 className="font-semibold mb-2">Findings:</h3>
+                            <ul className="list-disc list-inside space-y-1">
+                              {imageAnalysisResult.findings.map((finding, index) => (
+                                <li key={index} className="text-sm">{finding}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {imageAnalysisResult.recommendations && imageAnalysisResult.recommendations.length > 0 && (
+                          <div>
+                            <h3 className="font-semibold mb-2">Recommendations:</h3>
+                            <ul className="list-disc list-inside space-y-1">
+                              {imageAnalysisResult.recommendations.map((rec, index) => (
+                                <li key={index} className="text-sm">{rec}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        <p className="text-xs text-muted-foreground p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded">
+                          ⚠️ AI image analysis should be verified by a qualified radiologist or healthcare professional.
+                        </p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
             </div>
           )}
         </div>
       </div>
+
+      {/* Profile Modal */}
+      {showProfileModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowProfileModal(false)}>
+          <Card className="max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <FaIdCard className="text-primary" />
+                  My Profile
+                </CardTitle>
+                <button 
+                  onClick={() => setShowProfileModal(false)}
+                  className="text-muted-foreground hover:text-foreground text-2xl"
+                >
+                  ×
+                </button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {userProfile ? (
+                <>
+                  {/* Personal Information */}
+                  <div>
+                    <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                      <FaUser className="text-primary" />
+                      Personal Information
+                    </h3>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-muted-foreground">First Name</Label>
+                        <p className="font-medium">{userProfile.firstName || (user.name ? user.name.split(' ')[0] : 'N/A')}</p>
+                      </div>
+                      <div>
+                        <Label className="text-muted-foreground">Last Name</Label>
+                        <p className="font-medium">{userProfile.lastName || (user.name ? user.name.split(' ')[1] || 'N/A' : 'N/A')}</p>
+                      </div>
+                      <div>
+                        <Label className="text-muted-foreground">Email</Label>
+                        <p className="font-medium">{user.email || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <Label className="text-muted-foreground">Date of Birth</Label>
+                        <p className="font-medium">{userProfile.dateOfBirth || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <Label className="text-muted-foreground">Gender</Label>
+                        <p className="font-medium">{userProfile.gender || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <Label className="text-muted-foreground">Phone</Label>
+                        <p className="font-medium">{userProfile.phone || 'N/A'}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  {/* Address Information */}
+                  {(userProfile.address || userProfile.city || userProfile.state || userProfile.zipCode) && (
+                    <>
+                      <div>
+                        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                          <FaShieldAlt className="text-primary" />
+                          Address
+                        </h3>
+                        <div className="grid md:grid-cols-2 gap-4">
+                          <div className="md:col-span-2">
+                            <Label className="text-muted-foreground">Street Address</Label>
+                            <p className="font-medium">{userProfile.address || 'N/A'}</p>
+                          </div>
+                          <div>
+                            <Label className="text-muted-foreground">City</Label>
+                            <p className="font-medium">{userProfile.city || 'N/A'}</p>
+                          </div>
+                          <div>
+                            <Label className="text-muted-foreground">State</Label>
+                            <p className="font-medium">{userProfile.state || 'N/A'}</p>
+                          </div>
+                          <div>
+                            <Label className="text-muted-foreground">Zip Code</Label>
+                            <p className="font-medium">{userProfile.zipCode || 'N/A'}</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <Separator />
+                    </>
+                  )}
+
+                  {/* Medical Information */}
+                  {(userProfile.bloodType || userProfile.height || userProfile.weight || userProfile.allergies || userProfile.currentMedications || userProfile.medicalConditions) && (
+                    <>
+                      <div>
+                        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                          <FaHeartbeat className="text-primary" />
+                          Medical Information
+                        </h3>
+                        <div className="grid md:grid-cols-3 gap-4">
+                          <div>
+                            <Label className="text-muted-foreground">Blood Type</Label>
+                            <p className="font-medium">{userProfile.bloodType || 'N/A'}</p>
+                          </div>
+                          <div>
+                            <Label className="text-muted-foreground">Height</Label>
+                            <p className="font-medium">{userProfile.height || 'N/A'}</p>
+                          </div>
+                          <div>
+                            <Label className="text-muted-foreground">Weight</Label>
+                            <p className="font-medium">{userProfile.weight || 'N/A'}</p>
+                          </div>
+                        </div>
+                        {(userProfile.allergies || userProfile.currentMedications || userProfile.medicalConditions) && (
+                          <div className="mt-4 space-y-4">
+                            {userProfile.allergies && (
+                              <div>
+                                <Label className="text-muted-foreground">Allergies</Label>
+                                <p className="font-medium">{userProfile.allergies}</p>
+                              </div>
+                            )}
+                            {userProfile.currentMedications && (
+                              <div>
+                                <Label className="text-muted-foreground">Current Medications</Label>
+                                <p className="font-medium">{userProfile.currentMedications}</p>
+                              </div>
+                            )}
+                            {userProfile.medicalConditions && (
+                              <div>
+                                <Label className="text-muted-foreground">Medical Conditions</Label>
+                                <p className="font-medium">{userProfile.medicalConditions}</p>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      <Separator />
+                    </>
+                  )}
+
+                  {/* Emergency Contact */}
+                  {(userProfile.emergencyContactName || userProfile.emergencyContactPhone || userProfile.emergencyContactRelation) && (
+                    <div>
+                      <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                        <FaShieldAlt className="text-primary" />
+                        Emergency Contact
+                      </h3>
+                      <div className="grid md:grid-cols-3 gap-4">
+                        <div>
+                          <Label className="text-muted-foreground">Name</Label>
+                          <p className="font-medium">{userProfile.emergencyContactName || 'N/A'}</p>
+                        </div>
+                        <div>
+                          <Label className="text-muted-foreground">Phone</Label>
+                          <p className="font-medium">{userProfile.emergencyContactPhone || 'N/A'}</p>
+                        </div>
+                        <div>
+                          <Label className="text-muted-foreground">Relation</Label>
+                          <p className="font-medium">{userProfile.emergencyContactRelation || 'N/A'}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="text-center py-12">
+                  <FaUser className="text-4xl text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground">No profile information available</p>
+                  <p className="text-sm text-muted-foreground mt-2">Complete your onboarding to add profile details</p>
+                  <Button onClick={() => {
+                    setShowProfileModal(false);
+                    router.push('/onboarding');
+                  }} className="mt-4">
+                    Complete Onboarding
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }
